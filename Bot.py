@@ -36,7 +36,7 @@ def handleMentionEvent(json):
     event = json["payload"]["event"]
     if (event["type"] == "app_mention"):
         channel = event["channel"]
-        text = event["text"]
+        text = str(event["text"]).lower()
         user = getUserName(event["user"])
         print("Mention Event")
         print("Channel: {}, Text: {}".format(channel, text))
