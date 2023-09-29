@@ -1,13 +1,19 @@
 import json
+import os
 
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import requests as r
-from Hidden import appToken, botToken
+from pygame import mixer
 from websockets.sync.client import connect
+
+from Hidden import appToken, botToken, soundPath
 
 slackAPI = "https://slack.com/api/"
 appHeaders = {"Authorization": appToken}
 headers = {"Authorization": botToken}
 validWords = ["door", "noor", "abracadabra", "open sesame"]
+mixer.init()
+sound = mixer.Sound(soundPath)
 
 # API Endpoints
 openConnection = slackAPI + "apps.connections.open"
@@ -35,6 +41,7 @@ def handleMentionEvent(json):
         for word in validWords:
             if (text.__contains__(word)):
                 sendMessage(channel, "Ding!")
+                sound.play()
 
 def sendMessage(channelID, msg):
     payload = {
