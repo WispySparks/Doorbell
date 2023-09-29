@@ -4,6 +4,7 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import requests as r
 from pygame import mixer
+from websockets.exceptions import ConnectionClosed
 from websockets.sync.client import connect
 
 from Hidden import appToken, botToken, soundPath
@@ -25,12 +26,17 @@ def main():
     print("WS Status Code: " + str(response.status_code))
     url = response.json()["url"] + "&debug_reconnects=true"
     with connect(url) as socket:
+        print("Connected to WebSocket.")
         while True:
-            response = json.loads(socket.recv())
-            if (response.get("envelope_id") != None):
-                # Acknowledge event
-                socket.send(json.dumps({"envelope_id": response["envelope_id"]}))
-                handleMentionEvent(response)
+            try:
+                response = json.loads(socket.recv())
+                if (response.get("envelope_id") != None):
+                    # Acknowledge event
+                    socket.send(json.dumps({"envelope_id": response["envelope_id"]}))
+                    handleMentionEvent(response)
+            except ConnectionClosed as e:
+                print("Connection Closed. Refreshing . . .")
+                break
                 
 def handleMentionEvent(json):
     event = json["payload"]["event"]
@@ -38,7 +44,6 @@ def handleMentionEvent(json):
         channel = event["channel"]
         text = str(event["text"]).lower()
         user = getUserName(event["user"])
-        print("Mention Event")
         print("Channel: {}, Text: {}".format(channel, text))
         for word in validWords:
             if (text.__contains__(word)):
@@ -61,4 +66,5 @@ def getUserName(userID):
     return response.json()["user"]["real_name"]
     
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
