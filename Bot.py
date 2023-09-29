@@ -18,6 +18,7 @@ sound = mixer.Sound(soundPath)
 # API Endpoints
 openConnection = slackAPI + "apps.connections.open"
 postMessage = slackAPI + "chat.postMessage"
+userInfo = slackAPI + "users.info"
 
 def main():
     response = r.post(openConnection, headers=appHeaders)
@@ -36,12 +37,14 @@ def handleMentionEvent(json):
     if (event["type"] == "app_mention"):
         channel = event["channel"]
         text = event["text"]
+        user = getUserName(event["user"])
         print("Mention Event")
         print("Channel: {}, Text: {}".format(channel, text))
         for word in validWords:
             if (text.__contains__(word)):
-                sendMessage(channel, "Ding!")
+                sendMessage(channel, "Ding! (" + user + ")")
                 sound.play()
+                break
 
 def sendMessage(channelID, msg):
     payload = {
@@ -51,6 +54,11 @@ def sendMessage(channelID, msg):
     response = r.post(postMessage, payload, headers=headers)
     print("PM Status Code: " + str(response.status_code))
     print("Sent " + msg)
+    
+def getUserName(userID):
+    payload = {"user": userID}
+    response = r.get(userInfo, payload, headers=headers)
+    return response.json()["user"]["real_name"]
     
 if __name__ == "__main__":
     main()
