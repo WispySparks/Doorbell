@@ -1,17 +1,18 @@
 import json
 import os
 
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import requests as r
 from pygame import mixer
 from websockets.exceptions import ConnectionClosed
 from websockets.sync.client import connect
 
-from Hidden import appToken, botToken, soundPath
+from secret import appToken, botToken, soundPath
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
 slackAPI = "https://slack.com/api/"
-appHeaders = {"Authorization": appToken}
-headers = {"Authorization": botToken}
+appHeaders = {"Authorization": "Bearer " + appToken}
+headers = {"Authorization": "Bearer " + botToken}
 validWords = ["door", "noor", "abracadabra", "open sesame"]
 mixer.init()
 sound = mixer.Sound(soundPath)
