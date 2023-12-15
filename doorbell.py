@@ -41,7 +41,7 @@ def main():
                     event = response["payload"]["event"]
                     if (event["type"] == "app_mention"):
                         handleMentionEvent(event)
-            except ConnectionClosed as e:
+            except ConnectionClosed:
                 print("Connection Closed. Refreshing . . .")
                 break
                 
