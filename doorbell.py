@@ -57,10 +57,9 @@ def handleMentionEvent(event):
         if (schedule == None):
             sendMessage(channel, "Schedule not created yet!")
             return
-        t = datetime.now()
-        correctDay = int(list(schedule["days"])[t.weekday()]) == 1
-        correctTime = checkTime(schedule, t.time())
-        if (correctDay and correctTime):
+        date = datetime.now()
+        correctDay = int(list(schedule["days"])[date.weekday()]) == 1
+        if (correctDay and correctTime(schedule)):
             sendMessage(channel, "Ding! (" + user + ")")
             sound.play()
         else:
@@ -85,7 +84,7 @@ def handleSchedule(channel, args):
         if (re.match("^[01]{7}$", days) == None):
             sendMessage(channel, "Invalid days format. List 0's and 1's for the days starting at Monday.")
             return
-        if (re.match("^[0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9]$", time) == None):
+        if (re.match("^([0-1][0-9]|[2][0-3]):[0-5][0-9]-([0-1][0-9]|[2][0-3]):[0-5][0-9]$", time) == None):
             sendMessage(channel, "Invalid time format. Should be XX:XX-XX:XX.")
             return
         sendMessage(channel, "Wrote schedule.")
@@ -103,13 +102,14 @@ def getUserName(userID):
     response = r.get(userInfo, payload, headers=headers)
     return response.json()["user"]["real_name"]
 
-def checkTime(schedule, curretTime):
+def correctTime(schedule):
+    currentTime = datetime.now().time()
     t: str = schedule["time"]
     st = t.split("-")[0]
     et = t.split("-")[1] # I'm so sorry you have to read this
     startTime = time(int(st.split(":")[0]), int(st.split(":")[1]))
     endTime = time(int(et.split(":")[0]), int(et.split(":")[1]))
-    return startTime <= curretTime <= endTime # Operator overloading is a thing
+    return startTime <= currentTime <= endTime # Operator overloading is a thing
 
 def getFormattedSchedule(schedule):
     chars = list(schedule["days"])
