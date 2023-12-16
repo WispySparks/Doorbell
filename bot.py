@@ -13,8 +13,7 @@ from websockets.sync.client import connect
 from secret import appToken, botToken, soundPath
 
 slackAPI = "https://slack.com/api/"
-appHeaders = {"Authorization": "Bearer " + appToken}
-headers = {"Authorization": "Bearer " + botToken}
+authHeader = {"Authorization": "Bearer " + botToken}
 doorbellWords = ["door", "noor", "abracadabra", "open sesame"]
 schedulePath = "schedule.json"
 mixer.init()
@@ -26,7 +25,8 @@ postMessage = slackAPI + "chat.postMessage"
 userInfo = slackAPI + "users.info"
 
 def main():
-    response = r.post(openConnection, headers=appHeaders)
+    headers = {"Authorization": "Bearer " + appToken}
+    response = r.post(openConnection, headers=headers)
     print("WS Status Code: " + str(response.status_code))
     url = response.json()["url"] + "&debug_reconnects=true"
     with connect(url) as socket:
@@ -58,8 +58,8 @@ def handleMentionEvent(event):
             sendMessage(channel, "Schedule not created yet!")
             return
         date = datetime.now()
-        correctDay = int(list(schedule["days"])[date.weekday()]) == 1
-        if (correctDay and correctTime(schedule)):
+        isCorrectDay = int(list(schedule["days"])[date.weekday()]) == 1
+        if (isCorrectDay and isCorrectTime(schedule)):
             sendMessage(channel, "Ding! (" + user + ")")
             sound.play()
         else:
@@ -93,16 +93,16 @@ def handleSchedule(channel, args):
         
 def sendMessage(channelID, msg):
     payload = {"channel": channelID, "text": msg}
-    response = r.post(postMessage, payload, headers=headers)
+    response = r.post(postMessage, payload, headers=authHeader)
     print("PM Status Code: " + str(response.status_code))
     print("Sent " + msg)
     
 def getUserName(userID):
     payload = {"user": userID}
-    response = r.get(userInfo, payload, headers=headers)
+    response = r.get(userInfo, payload, headers=authHeader)
     return response.json()["user"]["real_name"]
 
-def correctTime(schedule):
+def isCorrectTime(schedule):
     currentTime = datetime.now().time()
     t: str = schedule["time"]
     st = t.split("-")[0]

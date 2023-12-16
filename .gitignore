@@ -1,5 +1,5 @@
+.vscode/
+__pycache__/
+sounds/
 secret.py
 schedule.json
-/sounds
-/.vscode
-__pycache__
