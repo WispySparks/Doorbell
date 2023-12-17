@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 
 import requests as r
@@ -53,12 +52,11 @@ class GoogleCalendar():
             name = event.get("summary")
             start = event.get("start").get("date") if event.get("start").get("dateTime") == None else event.get("start").get("dateTime")
             date = datetime.fromisoformat(start)
-            events.append({name: date})
+            events.append((name, date))
         return events
     
     def getNextEvent(self, calendarName):
-        return self.getEvents(calendarName)[0]
+        events = self.getEvents(calendarName)
+        if len(events) < 1: return None
+        return events[0]
         
-calendar = GoogleCalendar()
-# print(calendar.getEvents("Robotics Leadership"))
-print(calendar.getNextEvent("Robotics General"))

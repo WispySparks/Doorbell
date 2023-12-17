@@ -3,6 +3,8 @@ import os
 import re
 from datetime import datetime, time
 
+from googlecalendar import GoogleCalendar
+
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
 import requests as r
@@ -18,6 +20,7 @@ doorbellWords = ["door", "noor", "abracadabra", "open sesame"]
 schedulePath = "schedule.json"
 mixer.init()
 sound = mixer.Sound(soundPath)
+calendar = GoogleCalendar()
 
 # API Endpoints
 openConnection = slackAPI + "apps.connections.open"
@@ -47,27 +50,48 @@ def main():
                 
 def handleMentionEvent(event):
     channel = event["channel"]
-    text = str(event["text"]).lower()
+    text = str(event["text"])
     args = text.split()[1:] # Ignore first word which is the mention
     user = getUserName(event["user"])
     print("Channel: {}, Text: {}".format(channel, text))
     if (len(args) < 1): return
-    if (args[0] in doorbellWords):
-        schedule = readSchedule()
-        if (schedule == None):
-            sendMessage(channel, "Schedule not created yet!")
-            return
-        date = datetime.now()
-        isCorrectDay = int(list(schedule["days"])[date.weekday()]) == 1
-        if (isCorrectDay and isCorrectTime(schedule)):
-            sendMessage(channel, "Ding! (" + user + ")")
-            sound.play()
-        else:
-            sendMessage(channel, "Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
-    elif (args[0] == "schedule"):
+    cmd = args[0].lower()
+    if (cmd in doorbellWords):
+        handleDoorbell(channel, user)
+    elif (cmd == "schedule"):
         handleSchedule(channel, args)
+    elif (cmd == "next"):
+        if (len(args) < 2):
+            sendMessage(channel, "Need to provide a calendar.")
+            return
+        calendarName = " ".join(text.split()[2:]) # I need to use differently split args because of names with spaces
+        event = calendar.getNextEvent(calendarName)
+        if (event == None):
+            sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
+            return
+        name, date = event
+        sendMessage(channel, name + " - " + date.strftime("%#m/%d/%Y - %#I:%M %p"))
+    elif (cmd == "restart"):
+        sendMessage(channel, "Restarting.")
+        raise Exception("Restarting bot.")
+    elif (cmd == "die"):
+        sendMessage(channel, "Stopping.")
+        quit(0)
     else:
-        sendMessage(channel, "Invalid argument: " + args[0])
+        sendMessage(channel, "Invalid argument: " + cmd)
+        
+def handleDoorbell(channel, user):
+    schedule = readSchedule()
+    if (schedule == None):
+        sendMessage(channel, "Schedule not created yet!")
+        return
+    date = datetime.now()
+    isCorrectDay = int(list(schedule["days"])[date.weekday()]) == 1
+    if (isCorrectDay and isCorrectTime(schedule)):
+        sendMessage(channel, "Ding! (" + user + ")")
+        sound.play()
+    else:
+        sendMessage(channel, "Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
             
 def handleSchedule(channel, args):
     if (len(args) < 2):
@@ -130,4 +154,7 @@ def writeSchedule(days, time):
     
 if __name__ == "__main__":
     while True:
-        main()
+        try:
+            main()
+        except Exception as e:
+            print(e)
