@@ -60,6 +60,8 @@ def handleMentionEvent(event):
         handleDoorbell(channel, user)
     elif (cmd == "schedule"):
         handleSchedule(channel, args)
+    elif (cmd == "calendars"):
+        sendMessage(channel, ", ".join(list(calendar.calendars.keys())))
     elif (cmd == "next"):
         if (len(args) < 2):
             sendMessage(channel, "Need to provide a calendar.")
@@ -78,7 +80,7 @@ def handleMentionEvent(event):
         sendMessage(channel, "Stopping.")
         quit(0)
     else:
-        sendMessage(channel, "Invalid argument: " + cmd)
+        sendMessage(channel, "Invalid argument: " + cmd + ". Valid arguments are door, schedule, calendars, next, restart, die.")
         
 def handleDoorbell(channel, user):
     schedule = readSchedule()
