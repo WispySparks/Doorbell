@@ -5,16 +5,16 @@ import requests as r
 from secret import googleClientId, googleClientSecret, googleRefreshToken
 
 
-class GoogleCalendar():
+class GoogleCalendar(): # Still need to implement getting a new access token when old one is expired
     
-    headers = {"Authorization": "Bearer "}
-    calendars = {}
+    headers: dict[str, str] = {"Authorization": "Bearer "}
+    calendars: dict[str, str] = {}
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.getAccessToken()
         self.getCalendars()
 
-    def getAccessToken(self):
+    def getAccessToken(self) -> None:
         endpoint = "https://oauth2.googleapis.com/token"
         payload = {
             "client_id": googleClientId,
@@ -27,7 +27,7 @@ class GoogleCalendar():
         if (json.get("access_token") != None):
             self.headers = {"Authorization": "Bearer " + json.get("access_token")}
             
-    def getCalendars(self):
+    def getCalendars(self) -> None:
         endpoint = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
         resp = r.get(endpoint, headers=self.headers)
         items = resp.json().get("items")
@@ -36,7 +36,7 @@ class GoogleCalendar():
             id = calendar.get("id")
             self.calendars.update({name: id})
             
-    def getEvents(self, calendarName):
+    def getEvents(self, calendarName) -> list[tuple[str, datetime]]:
         events = []
         id = self.calendars.get(calendarName)
         if (id == None): return events
@@ -55,7 +55,7 @@ class GoogleCalendar():
             events.append((name, date))
         return events
     
-    def getNextEvent(self, calendarName):
+    def getNextEvent(self, calendarName) -> tuple[str, datetime] | None:
         events = self.getEvents(calendarName)
         if len(events) < 1: return None
         return events[0]
