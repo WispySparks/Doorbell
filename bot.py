@@ -1,7 +1,8 @@
 import json
 import os
 import re
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
+from time import sleep
 
 from googlecalendar import GoogleCalendar
 
@@ -82,12 +83,12 @@ def handleMentionEvent(event):
         sendMessage(channel, "Stopping.")
         quit(0)
     else:
-        sendMessage(channel, "Invalid argument: " + cmd + ". Valid arguments are door, \
-                    schedule, calendars, next, subscribe(not fully impl), restart, and die.")
+        sendMessage(channel, "Invalid argument: " + cmd + ". Valid arguments are door, " +
+        "schedule, calendars, next, subscribe(not fully impl), restart, and die.")
         
 def handleDoorbell(channel, user):
     schedule = readData()
-    if (schedule["days"] == None or schedule["time"] == None):
+    if (schedule.get("days") == None or schedule.get("time") == None):
         sendMessage(channel, "Schedule not created yet!")
         return
     date = datetime.now()
@@ -101,7 +102,7 @@ def handleDoorbell(channel, user):
 def handleSchedule(channel, args):
     if (len(args) < 2):
         schedule = readData()
-        if (schedule["days"] == None or schedule["time"] == None):
+        if (schedule.get("days") == None or schedule.get("time") == None):
             sendMessage(channel, "Schedule not created yet!")
         else:
             sendMessage(channel, getFormattedSchedule(schedule))
@@ -170,6 +171,30 @@ def getFormattedSchedule(schedule):
             + chars[4] + ", Sa:" + chars[5]  + ", Su:" + chars[6]
     return "Days: " + days + ", Time: " + schedule["time"]
 
+def pollSubscriptions():
+    data = readData()
+    subs = data["subscriptions"]
+    for sub in subs:
+        channelId = sub["channelId"]
+        calendarName = sub["calendarName"]
+        remindTime = sub["remindTime"]
+        event = sub["nextEvent"]
+        name = event["name"]
+        date = datetime.fromisoformat(event["date"])
+        remindWindowStart = date - timedelta(hours = remindTime)
+        if (datetime.now() > remindWindowStart):
+            print("Wow!")
+            nextEvent = calendar.getNextEvent(calendarName)
+            if (nextEvent != None):
+                name, date = nextEvent
+                print(json.dumps(subs, indent = 4))
+                writeData(subs)
+                
+def runPoller():
+    while True:
+        pollSubscriptions()
+        sleep(60)
+
 def readData():
     with open(dataPath, "r") as f:
         return json.loads(f.read())
@@ -189,7 +214,7 @@ def writeDataAll(days, time, subscriptions):
     }
     with open(dataPath, "w+") as f:
         json.dump(data, f, indent = 4)
-        
+
 if __name__ == "__main__":
     if not os.path.isfile(dataPath):
         writeDataAll(None, None, [])
