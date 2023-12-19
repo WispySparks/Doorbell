@@ -3,4 +3,4 @@
 __pycache__/
 sounds/
 secret.py
-schedule.json
+*.json

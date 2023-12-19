@@ -17,7 +17,7 @@ from secret import appToken, botToken, soundPath
 slackAPI = "https://slack.com/api/"
 authHeader = {"Authorization": "Bearer " + botToken}
 doorbellWords = ["door", "noor", "abracadabra", "open sesame"]
-schedulePath = "schedule.json"
+dataPath = "data.json"
 mixer.init()
 sound = mixer.Sound(soundPath)
 calendar = GoogleCalendar()
@@ -66,13 +66,15 @@ def handleMentionEvent(event):
         if (len(args) < 2):
             sendMessage(channel, "Need to provide a calendar.")
             return
-        calendarName = " ".join(text.split()[2:]) # I need to use differently split args because of names with spaces
+        calendarName = " ".join(args[1:])
         event = calendar.getNextEvent(calendarName)
         if (event == None):
             sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
             return
         name, date = event
         sendMessage(channel, name + " - " + date.strftime("%#m/%d/%Y - %#I:%M %p"))
+    elif (cmd == "subscribe"):
+        handleSubscribe(channel, args)
     elif (cmd == "restart"):
         sendMessage(channel, "Restarting.")
         raise Exception("Restarting bot.")
@@ -80,11 +82,12 @@ def handleMentionEvent(event):
         sendMessage(channel, "Stopping.")
         quit(0)
     else:
-        sendMessage(channel, "Invalid argument: " + cmd + ". Valid arguments are door, schedule, calendars, next, restart, die.")
+        sendMessage(channel, "Invalid argument: " + cmd + ". Valid arguments are door, \
+                    schedule, calendars, next, subscribe(not fully impl), restart, and die.")
         
 def handleDoorbell(channel, user):
-    schedule = readSchedule()
-    if (schedule == None):
+    schedule = readData()
+    if (schedule["days"] == None or schedule["time"] == None):
         sendMessage(channel, "Schedule not created yet!")
         return
     date = datetime.now()
@@ -97,8 +100,8 @@ def handleDoorbell(channel, user):
             
 def handleSchedule(channel, args):
     if (len(args) < 2):
-        schedule = readSchedule()
-        if (schedule == None):
+        schedule = readData()
+        if (schedule["days"] == None or schedule["time"] == None):
             sendMessage(channel, "Schedule not created yet!")
         else:
             sendMessage(channel, getFormattedSchedule(schedule))
@@ -114,13 +117,37 @@ def handleSchedule(channel, args):
             sendMessage(channel, "Invalid time format. Should be XX:XX-XX:XX.")
             return
         sendMessage(channel, "Wrote schedule.")
-        writeSchedule(days, time)
-        sendMessage(channel, getFormattedSchedule(readSchedule()))
+        writeData(days, time)
+        sendMessage(channel, getFormattedSchedule(readData()))
+        
+def handleSubscribe(channel, args):
+    if (len(args) < 2):
+        sendMessage(channel, "Must provide how many hours before to be reminded.")
+    elif (len(args) < 3):
+        sendMessage(channel, "Must provide a calendar to subscribe to.")
+    else:
+        remindTimeHours = float(args[1])
+        calendarName = " ".join(args[2:])
+        event = calendar.getNextEvent(calendarName)
+        if (event == None):
+            sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
+            return
+        name, date = event
+        subs: list = readData()["subscriptions"]
+        subs.append({
+            "channelId": channel,
+            "calendarName": calendarName,
+            "remindTime": remindTimeHours,
+            "nextEvent": {
+                "name": name,
+                "date": date.isoformat()
+            }
+        })
+        writeData(subscriptions = subs)
         
 def sendMessage(channelID, msg):
     payload = {"channel": channelID, "text": msg}
-    response = r.post(postMessage, payload, headers=authHeader)
-    print("PM Status Code: " + str(response.status_code))
+    r.post(postMessage, payload, headers=authHeader)
     print("Sent " + msg)
     
 def getUserName(userID):
@@ -143,18 +170,29 @@ def getFormattedSchedule(schedule):
             + chars[4] + ", Sa:" + chars[5]  + ", Su:" + chars[6]
     return "Days: " + days + ", Time: " + schedule["time"]
 
-def readSchedule():
-    if not os.path.isfile(schedulePath):
-        return None
-    with open(schedulePath, "r") as f:
+def readData():
+    with open(dataPath, "r") as f:
         return json.loads(f.read())
     
-def writeSchedule(days, time):
-    data = {"days": days, "time": time}
-    with open(schedulePath, "w+") as f:
-        json.dump(data, f)     
-    
+def writeData(days = None, time = None, subscriptions = None):
+    # This lets you not have to write all the fields at once
+    if days == None: days = readData()["days"]
+    if time == None: time = readData()["time"]
+    if subscriptions == None: subscriptions = readData()["subscriptions"]
+    writeDataAll(days, time, subscriptions)
+        
+def writeDataAll(days, time, subscriptions):
+    data = {
+        "days": days,
+        "time": time,
+        "subscriptions": subscriptions
+    }
+    with open(dataPath, "w+") as f:
+        json.dump(data, f, indent = 4)
+        
 if __name__ == "__main__":
+    if not os.path.isfile(dataPath):
+        writeDataAll(None, None, [])
     while True:
         try:
             main()
