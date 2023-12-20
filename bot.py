@@ -3,6 +3,7 @@ import os
 import re
 from datetime import datetime, time, timedelta
 from time import sleep
+from typing import Any
 
 from googlecalendar import GoogleCalendar
 
@@ -28,33 +29,34 @@ openConnection = slackAPI + "apps.connections.open"
 postMessage = slackAPI + "chat.postMessage"
 userInfo = slackAPI + "users.info"
 
-def main():
+def main() -> None:
     headers = {"Authorization": "Bearer " + appToken}
     response = r.post(openConnection, headers=headers)
     print("WS Status Code: " + str(response.status_code))
-    url = response.json()["url"] + "&debug_reconnects=true"
+    url = response.json().get("url") + "&debug_reconnects=true"
     with connect(url) as socket:
         print("Connected to WebSocket.")
         while True:
             try:
-                response = json.loads(socket.recv())
-                if (response.get("envelope_id") != None):
+                resp = json.loads(socket.recv())
+                envelope_id = resp.get("envelope_id")
+                if (envelope_id != None):
                     # Acknowledge event
-                    socket.send(json.dumps({"envelope_id": response["envelope_id"]}))
-                    if (response["retry_attempt"] > 0 and response["retry_reason"] == "timeout"): return # Ignore retries, they're annoying
-                    event = response["payload"]["event"]
-                    if (event["type"] == "app_mention"):
+                    socket.send(json.dumps({"envelope_id": envelope_id}))
+                    if (resp.get("retry_attempt") > 0 and resp.get("retry_reason") == "timeout"): return # Ignore retries, they're annoying
+                    event = resp.get("payload").get("event")
+                    if (event.get("type") == "app_mention"):
                         handleMentionEvent(event)
             except ConnectionClosed:
                 print("Connection Closed. Refreshing . . .")
                 break
                 
-def handleMentionEvent(event):
-    channel = event["channel"]
-    text = str(event["text"])
+def handleMentionEvent(event: dict) -> None:
+    channel = event.get("channel", "")
+    text: str = event.get("text", "")
     args = text.split()[1:] # Ignore first word which is the mention
-    user = getUserName(event["user"])
-    print("Channel: {}, Text: {}".format(channel, text))
+    user = getUserName(event.get("user", "")) 
+    print("Channel: {}, Args: {}, User: {}".format(channel, args, user))
     if (len(args) < 1): return
     cmd = args[0].lower()
     if (cmd in doorbellWords):
@@ -68,11 +70,11 @@ def handleMentionEvent(event):
             sendMessage(channel, "Need to provide a calendar.")
             return
         calendarName = " ".join(args[1:])
-        event = calendar.getNextEvent(calendarName)
-        if (event == None):
+        nextEvent = calendar.getNextEvent(calendarName)
+        if (nextEvent == None):
             sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
             return
-        name, date = event
+        name, date = nextEvent
         sendMessage(channel, name + " - " + date.strftime("%#m/%d/%Y - %#I:%M %p"))
     elif (cmd == "subscribe"):
         handleSubscribe(channel, args)
@@ -86,20 +88,22 @@ def handleMentionEvent(event):
         sendMessage(channel, "Invalid argument: " + cmd + ". Valid arguments are door, " +
         "schedule, calendars, next, subscribe(not fully impl), restart, and die.")
         
-def handleDoorbell(channel, user):
+def handleDoorbell(channel: str, user: str) -> None:
     schedule = readData()
-    if (schedule.get("days") == None or schedule.get("time") == None):
+    days = schedule.get("days")
+    time = schedule.get("time")
+    if (days == None or time == None):
         sendMessage(channel, "Schedule not created yet!")
         return
     date = datetime.now()
-    isCorrectDay = int(list(schedule["days"])[date.weekday()]) == 1
-    if (isCorrectDay and isCorrectTime(schedule)):
+    isCorrectDay = int(list(days)[date.weekday()]) == 1
+    if (isCorrectDay and isCorrectTime(time)):
         sendMessage(channel, "Ding! (" + user + ")")
         sound.play()
     else:
         sendMessage(channel, "Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
             
-def handleSchedule(channel, args):
+def handleSchedule(channel: str, args: list[str]) -> None:
     if (len(args) < 2):
         schedule = readData()
         if (schedule.get("days") == None or schedule.get("time") == None):
@@ -121,7 +125,7 @@ def handleSchedule(channel, args):
         writeData(days, time)
         sendMessage(channel, getFormattedSchedule(readData()))
         
-def handleSubscribe(channel, args):
+def handleSubscribe(channel: str, args: list[str]) -> None:
     if (len(args) < 2):
         sendMessage(channel, "Must provide how many hours before to be reminded.")
     elif (len(args) < 3):
@@ -134,7 +138,7 @@ def handleSubscribe(channel, args):
             sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
             return
         name, date = event
-        subs: list = readData()["subscriptions"]
+        subs: list = readData().get("subscriptions", [])
         subs.append({
             "channelId": channel,
             "calendarName": calendarName,
@@ -146,34 +150,33 @@ def handleSubscribe(channel, args):
         })
         writeData(subscriptions = subs)
         
-def sendMessage(channelID, msg):
+def sendMessage(channelID: str, msg: str) -> None:
     payload = {"channel": channelID, "text": msg}
     r.post(postMessage, payload, headers=authHeader)
     print("Sent " + msg)
     
-def getUserName(userID):
+def getUserName(userID: str) -> str:
     payload = {"user": userID}
     response = r.get(userInfo, payload, headers=authHeader)
-    return response.json()["user"]["real_name"]
+    return response.json().get("user").get("real_name")
 
-def isCorrectTime(schedule):
+def isCorrectTime(t: str) -> bool:
     currentTime = datetime.now().time()
-    t: str = schedule["time"]
-    st = t.split("-")[0]
-    et = t.split("-")[1] # I'm so sorry you have to read this
-    startTime = time(int(st.split(":")[0]), int(st.split(":")[1]))
-    endTime = time(int(et.split(":")[0]), int(et.split(":")[1]))
+    start = t.split("-")[0]
+    end = t.split("-")[1] # I'm so sorry you have to read this
+    startTime = time(int(start.split(":")[0]), int(start.split(":")[1]))
+    endTime = time(int(end.split(":")[0]), int(end.split(":")[1]))
     return startTime <= currentTime <= endTime # Operator overloading is a thing
 
-def getFormattedSchedule(schedule):
-    chars = list(schedule["days"])
+def getFormattedSchedule(schedule: dict) -> str:
+    chars = list(schedule.get("days", ""))
     days = "Mo:" + chars[0] + ", Tu:" + chars[1] + ", We:" + chars[2] + ", Th:" + chars[3] + ", Fr:" \
             + chars[4] + ", Sa:" + chars[5]  + ", Su:" + chars[6]
-    return "Days: " + days + ", Time: " + schedule["time"]
+    return "Days: " + days + ", Time: " + schedule.get("time")
 
-def pollSubscriptions():
+def pollSubscriptions() -> None:
     data = readData()
-    subs = data["subscriptions"]
+    subs = data.get("subscriptions", [])
     for sub in subs:
         channelId = sub["channelId"]
         calendarName = sub["calendarName"]
@@ -190,23 +193,23 @@ def pollSubscriptions():
                 print(json.dumps(subs, indent = 4))
                 writeData(subs)
                 
-def runPoller():
+def runPoller() -> None:
     while True:
         pollSubscriptions()
         sleep(60)
 
-def readData():
+def readData() -> dict[str, Any]:
     with open(dataPath, "r") as f:
         return json.loads(f.read())
     
-def writeData(days = None, time = None, subscriptions = None):
+def writeData(days = None, time = None, subscriptions = []) -> None:
     # This lets you not have to write all the fields at once
-    if days == None: days = readData()["days"]
-    if time == None: time = readData()["time"]
-    if subscriptions == None: subscriptions = readData()["subscriptions"]
+    if days == None: days = readData().get("days")
+    if time == None: time = readData().get("time")
+    if subscriptions == []: subscriptions = readData().get("subscriptions", [])
     writeDataAll(days, time, subscriptions)
         
-def writeDataAll(days, time, subscriptions):
+def writeDataAll(days: str | None, time: str | None, subscriptions: list) -> None:
     data = {
         "days": days,
         "time": time,
