@@ -77,7 +77,7 @@ def handleMentionEvent(event: dict) -> None:
         calendarName = " ".join(args[1:])
         nextEvent = calendar.getNextEvent(calendarName)
         if (nextEvent == None):
-            sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
+            sendMessage(channel, "Invalid Calendar - " + calendarName + " or no future events.")
             return
         name, start, _ = nextEvent
         sendMessage(channel, name + " - " + start.strftime(GoogleCalendar.dateFormat))
