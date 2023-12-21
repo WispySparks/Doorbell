@@ -1,40 +1,41 @@
 import json
 import os
 import re
-from datetime import datetime, time, timedelta
-from time import sleep
-from typing import Any
-
-from googlecalendar import GoogleCalendar
+from datetime import datetime, time
+from threading import Lock
+from typing import Any, Final
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
 import requests as r
 from pygame import mixer
 from websockets.exceptions import ConnectionClosed
-from websockets.sync.client import connect
+from websockets.sync import client
 
+from classes import EventPoller, GoogleCalendar
 from secret import appToken, botToken, soundPath
 
-slackAPI = "https://slack.com/api/"
-authHeader = {"Authorization": "Bearer " + botToken}
-doorbellWords = ["door", "noor", "abracadabra", "open sesame"]
-dataPath = "data.json"
+doorbellWords: Final = ["door", "noor", "abracadabra", "open sesame"]
+dataPath: Final = "data.json"
 mixer.init()
-sound = mixer.Sound(soundPath)
-calendar = GoogleCalendar()
+sound: Final = mixer.Sound(soundPath)
+calendar: Final = GoogleCalendar()
+eventPoller: Final = EventPoller(60)
+lock: Final = Lock()
 
-# API Endpoints
-openConnection = slackAPI + "apps.connections.open"
-postMessage = slackAPI + "chat.postMessage"
-userInfo = slackAPI + "users.info"
+# API
+slackAPI: Final = "https://slack.com/api/"
+openConnection: Final = slackAPI + "apps.connections.open"
+postMessage: Final = slackAPI + "chat.postMessage"
+userInfo: Final = slackAPI + "users.info"
+authHeader: Final = {"Authorization": "Bearer " + botToken}
 
 def main() -> None:
     headers = {"Authorization": "Bearer " + appToken}
     response = r.post(openConnection, headers=headers)
     print("WS Status Code: " + str(response.status_code))
     url = response.json().get("url") + "&debug_reconnects=true"
-    with connect(url) as socket:
+    with client.connect(url) as socket:
         print("Connected to WebSocket.")
         while True:
             try:
@@ -57,7 +58,9 @@ def handleMentionEvent(event: dict) -> None:
     args = text.split()[1:] # Ignore first word which is the mention
     user = getUserName(event.get("user", "")) 
     print("Channel: {}, Args: {}, User: {}".format(channel, args, user))
-    if (len(args) < 1): return
+    if (len(args) < 1):
+        sendMessage(channel, "Hi! (Must provide a command).")
+        return
     cmd = args[0].lower()
     if (cmd in doorbellWords):
         handleDoorbell(channel, user)
@@ -75,18 +78,18 @@ def handleMentionEvent(event: dict) -> None:
             sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
             return
         name, date = nextEvent
-        sendMessage(channel, name + " - " + date.strftime("%#m/%d/%Y - %#I:%M %p"))
+        sendMessage(channel, name + " - " + date.strftime(GoogleCalendar.dateFormat))
     elif (cmd == "subscribe"):
         handleSubscribe(channel, args)
     elif (cmd == "restart"):
         sendMessage(channel, "Restarting.")
         raise Exception("Restarting bot.")
-    elif (cmd == "die"):
+    elif (cmd == "exit" or cmd == "die"):
         sendMessage(channel, "Stopping.")
-        quit(0)
+        handleExit()
     else:
         sendMessage(channel, "Invalid argument: " + cmd + ". Valid arguments are door, " +
-        "schedule, calendars, next, subscribe(not fully impl), restart, and die.")
+        "schedule, calendars, next, subscribe(not fully impl), restart, and exit.")
         
 def handleDoorbell(channel: str, user: str) -> None:
     schedule = readData()
@@ -135,7 +138,7 @@ def handleSubscribe(channel: str, args: list[str]) -> None:
         calendarName = " ".join(args[2:])
         event = calendar.getNextEvent(calendarName)
         if (event == None):
-            sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
+            sendMessage(channel, "Invalid calendar - " + calendarName + " or no future events.")
             return
         name, date = event
         subs: list = readData().get("subscriptions", [])
@@ -149,6 +152,7 @@ def handleSubscribe(channel: str, args: list[str]) -> None:
             }
         })
         writeData(subscriptions = subs)
+        sendMessage(channel, "Subscribed to " + calendarName + " and reminds " + str(remindTimeHours) + " hours before.")
         
 def sendMessage(channelID: str, msg: str) -> None:
     payload = {"channel": channelID, "text": msg}
@@ -174,30 +178,6 @@ def getFormattedSchedule(schedule: dict) -> str:
             + chars[4] + ", Sa:" + chars[5]  + ", Su:" + chars[6]
     return "Days: " + days + ", Time: " + schedule.get("time")
 
-def pollSubscriptions() -> None:
-    data = readData()
-    subs = data.get("subscriptions", [])
-    for sub in subs:
-        channelId = sub["channelId"]
-        calendarName = sub["calendarName"]
-        remindTime = sub["remindTime"]
-        event = sub["nextEvent"]
-        name = event["name"]
-        date = datetime.fromisoformat(event["date"])
-        remindWindowStart = date - timedelta(hours = remindTime)
-        if (datetime.now() > remindWindowStart):
-            print("Wow!")
-            nextEvent = calendar.getNextEvent(calendarName)
-            if (nextEvent != None):
-                name, date = nextEvent
-                print(json.dumps(subs, indent = 4))
-                writeData(subs)
-                
-def runPoller() -> None:
-    while True:
-        pollSubscriptions()
-        sleep(60)
-
 def readData() -> dict[str, Any]:
     with open(dataPath, "r") as f:
         return json.loads(f.read())
@@ -210,19 +190,15 @@ def writeData(days = None, time = None, subscriptions = []) -> None:
     writeDataAll(days, time, subscriptions)
         
 def writeDataAll(days: str | None, time: str | None, subscriptions: list) -> None:
-    data = {
-        "days": days,
-        "time": time,
-        "subscriptions": subscriptions
-    }
-    with open(dataPath, "w+") as f:
-        json.dump(data, f, indent = 4)
-
-if __name__ == "__main__":
-    if not os.path.isfile(dataPath):
-        writeDataAll(None, None, [])
-    while True:
-        try:
-            main()
-        except Exception as e:
-            print(e)
+    with lock: 
+        data = {
+            "days": days,
+            "time": time,
+            "subscriptions": subscriptions
+        }
+        with open(dataPath, "w+") as f:
+            json.dump(data, f, indent = 4)
+            
+def handleExit():
+    eventPoller.stop()
+    quit(0)
