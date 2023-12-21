@@ -55,7 +55,7 @@ class GoogleCalendar(): # Still need to implement getting a new access token whe
             id = calendar.get("id")
             self.calendars.update({name: id})
             
-    def getEvents(self, calendarName, minDate: datetime|None = None) -> list[tuple[str, datetime]]:
+    def getEvents(self, calendarName, minDate: datetime|None = None) -> list[tuple[str, datetime, datetime]]:
         events = []
         id = self.calendars.get(calendarName)
         if (id == None): return events
@@ -64,7 +64,7 @@ class GoogleCalendar(): # Still need to implement getting a new access token whe
         payload = {
             "orderBy": "startTime",
             "singleEvents": True,
-            "timeMin": minDate.isoformat()
+            "timeMin": minDate.isoformat() # This goes by event end time unfortunately
         }
         resp = r.get(endpoint, payload, headers=self.headers)
         self.retryFuncIfTokenExpired(resp, self.getEvents)
@@ -72,11 +72,13 @@ class GoogleCalendar(): # Still need to implement getting a new access token whe
         for event in items:
             name = event.get("summary")
             start = event.get("start").get("date") if event.get("start").get("dateTime") == None else event.get("start").get("dateTime")
-            date = datetime.fromisoformat(start)
-            events.append((name, date))
+            end = event.get("end").get("date") if event.get("end").get("dateTime") == None else event.get("end").get("dateTime")
+            start = datetime.fromisoformat(start)
+            end = datetime.fromisoformat(end)
+            events.append((name, start, end))
         return events
     
-    def getNextEvent(self, calendarName, minDate: datetime|None = None) -> tuple[str, datetime] | None:
+    def getNextEvent(self, calendarName, minDate: datetime|None = None) -> tuple[str, datetime, datetime] | None:
         events = self.getEvents(calendarName, minDate)
         if len(events) < 1: return None
         return events[0]
@@ -113,16 +115,17 @@ class EventPoller(Thread):
                     bot.writeData(subscriptions = subs)
                 continue
             name = event["name"]
-            eventDate = datetime.fromisoformat(event["date"])
+            eventDate = datetime.fromisoformat(event["start"])
             remindWindowStart = eventDate - timedelta(hours = remindTime)
             currentDate = datetime.now().astimezone()
             if (currentDate >= remindWindowStart):
                 bot.sendMessage(channelId, "Reminder: " + name + " - " + eventDate.strftime(GoogleCalendar.dateFormat))
-                minDate = max(currentDate, eventDate + timedelta(hours=24)) # Add a second to not get same event
+                eventEnd = datetime.fromisoformat(event["end"])
+                minDate = max(currentDate, eventEnd)
                 nextEvent = bot.calendar.getNextEvent(calendarName, minDate)
                 if (nextEvent != None):
-                    name, date = nextEvent
-                    sub["nextEvent"] = {"name": name, "date": date.isoformat()}
+                    name, start, _ = nextEvent
+                    sub["nextEvent"] = {"name": name, "date": start.isoformat()}
                 else:
                     sub["nextEvent"] = None # Signal no new future events
                 bot.writeData(subscriptions = subs)

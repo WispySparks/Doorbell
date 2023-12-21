@@ -79,8 +79,8 @@ def handleMentionEvent(event: dict) -> None:
         if (nextEvent == None):
             sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
             return
-        name, date = nextEvent
-        sendMessage(channel, name + " - " + date.strftime(GoogleCalendar.dateFormat))
+        name, start, _ = nextEvent
+        sendMessage(channel, name + " - " + start.strftime(GoogleCalendar.dateFormat))
     elif (cmd == "subscribe"):
         handleSubscribe(channel, args)
     elif (cmd == "restart"):
@@ -142,7 +142,7 @@ def handleSubscribe(channel: str, args: list[str]) -> None:
         if (event == None):
             sendMessage(channel, "Invalid calendar - " + calendarName + " or no future events.")
             return
-        name, date = event
+        name, start, end = event
         subs: list = readData().get("subscriptions", [])
         subs.append({
             "channelId": channel,
@@ -150,7 +150,8 @@ def handleSubscribe(channel: str, args: list[str]) -> None:
             "remindTime": remindTimeHours,
             "nextEvent": {
                 "name": name,
-                "date": date.isoformat()
+                "start": start.isoformat(),
+                "end": end.isoformat()
             }
         })
         writeData(subscriptions = subs)
