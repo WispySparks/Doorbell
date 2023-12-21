@@ -31,6 +31,8 @@ userInfo: Final = slackAPI + "users.info"
 authHeader: Final = {"Authorization": "Bearer " + botToken}
 
 def main() -> None:
+    calendar.getAccessToken() # For on restart
+    calendar.getCalendars()
     headers = {"Authorization": "Bearer " + appToken}
     response = r.post(openConnection, headers=headers)
     print("WS Status Code: " + str(response.status_code))
@@ -176,7 +178,7 @@ def getFormattedSchedule(schedule: dict) -> str:
     chars = list(schedule.get("days", ""))
     days = "Mo:" + chars[0] + ", Tu:" + chars[1] + ", We:" + chars[2] + ", Th:" + chars[3] + ", Fr:" \
             + chars[4] + ", Sa:" + chars[5]  + ", Su:" + chars[6]
-    return "Days: " + days + ", Time: " + schedule.get("time")
+    return "Days: " + days + ", Time: " + schedule.get("time", "")
 
 def readData() -> dict[str, Any]:
     with open(dataPath, "r") as f:

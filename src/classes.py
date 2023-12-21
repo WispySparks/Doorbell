@@ -1,4 +1,3 @@
-import json
 import time
 from datetime import datetime, timedelta
 from threading import Thread
@@ -15,11 +14,24 @@ class GoogleCalendar(): # Still need to implement getting a new access token whe
     headers: dict[str, str] = {"Authorization": "Bearer "}
     calendars: dict[str, str] = {}
     dateFormat: Final[str] = "%#m/%d/%Y - %#I:%M %p" # Only works on windows machines
+    maxRetries: Final[int] = 3
+    currentRetries: int = 0
     
     def __init__(self) -> None:
         self.getAccessToken()
         self.getCalendars()
-
+        
+    def isTokenExpired(self, json) -> bool:
+        if (json.get("error") != None and json.get("error").get("status", "") == "UNAUTHENTICATED"):
+            return True
+        return False
+    
+    def retryFuncIfTokenExpired(self, resp, func):
+        if (self.isTokenExpired(resp.json()) and self.currentRetries < self.maxRetries):
+            self.getAccessToken()
+            self.currentRetries += 1
+            return func()
+        
     def getAccessToken(self) -> None:
         endpoint = "https://oauth2.googleapis.com/token"
         payload = {
@@ -36,7 +48,8 @@ class GoogleCalendar(): # Still need to implement getting a new access token whe
     def getCalendars(self) -> None:
         endpoint = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
         resp = r.get(endpoint, headers=self.headers)
-        items = resp.json().get("items")
+        self.retryFuncIfTokenExpired(resp, self.getCalendars)
+        items = resp.json().get("items", [])
         for calendar in items:
             name = calendar.get("summary")
             id = calendar.get("id")
@@ -54,6 +67,7 @@ class GoogleCalendar(): # Still need to implement getting a new access token whe
             "timeMin": minDate.isoformat()
         }
         resp = r.get(endpoint, payload, headers=self.headers)
+        self.retryFuncIfTokenExpired(resp, self.getEvents)
         items = resp.json().get("items", [])
         for event in items:
             name = event.get("summary")
