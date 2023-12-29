@@ -31,6 +31,8 @@ userInfo: Final = slackAPI + "users.info"
 authHeader: Final = {"Authorization": "Bearer " + botToken}
 
 def main() -> None:
+    calendar.getAccessToken() # For on restart
+    calendar.getCalendars()
     headers = {"Authorization": "Bearer " + appToken}
     response = r.post(openConnection, headers=headers)
     print("WS Status Code: " + str(response.status_code))
@@ -75,10 +77,10 @@ def handleMentionEvent(event: dict) -> None:
         calendarName = " ".join(args[1:])
         nextEvent = calendar.getNextEvent(calendarName)
         if (nextEvent == None):
-            sendMessage(channel, "Invalid Calendar - " + calendarName + ".")
+            sendMessage(channel, "Invalid Calendar - " + calendarName + " or no future events.")
             return
-        name, date = nextEvent
-        sendMessage(channel, name + " - " + date.strftime(GoogleCalendar.dateFormat))
+        name, start, _ = nextEvent
+        sendMessage(channel, name + " - " + start.strftime(GoogleCalendar.dateFormat))
     elif (cmd == "subscribe"):
         handleSubscribe(channel, args)
     elif (cmd == "restart"):
@@ -140,7 +142,7 @@ def handleSubscribe(channel: str, args: list[str]) -> None:
         if (event == None):
             sendMessage(channel, "Invalid calendar - " + calendarName + " or no future events.")
             return
-        name, date = event
+        name, start, end = event
         subs: list = readData().get("subscriptions", [])
         subs.append({
             "channelId": channel,
@@ -148,7 +150,8 @@ def handleSubscribe(channel: str, args: list[str]) -> None:
             "remindTime": remindTimeHours,
             "nextEvent": {
                 "name": name,
-                "date": date.isoformat()
+                "start": start.isoformat(),
+                "end": end.isoformat()
             }
         })
         writeData(subscriptions = subs)
@@ -176,7 +179,7 @@ def getFormattedSchedule(schedule: dict) -> str:
     chars = list(schedule.get("days", ""))
     days = "Mo:" + chars[0] + ", Tu:" + chars[1] + ", We:" + chars[2] + ", Th:" + chars[3] + ", Fr:" \
             + chars[4] + ", Sa:" + chars[5]  + ", Su:" + chars[6]
-    return "Days: " + days + ", Time: " + schedule.get("time")
+    return "Days: " + days + ", Time: " + schedule.get("time", "")
 
 def readData() -> dict[str, Any]:
     with open(dataPath, "r") as f:
