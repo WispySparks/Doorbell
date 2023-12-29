@@ -1,4 +1,3 @@
-import json
 import time
 from datetime import datetime, timedelta
 from threading import Thread
@@ -6,11 +5,10 @@ from typing import Final
 
 import requests as r
 
-import bot
 from secret import googleClientId, googleClientSecret, googleRefreshToken
 
 
-class GoogleCalendar(): # Still need to implement getting a new access token when old one is expired
+class GoogleCalendar():
     
     headers: dict[str, str] = {"Authorization": "Bearer "}
     calendars: dict[str, str] = {}
@@ -36,7 +34,7 @@ class GoogleCalendar(): # Still need to implement getting a new access token whe
     def getCalendars(self) -> None:
         endpoint = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
         resp = r.get(endpoint, headers=self.headers)
-        items = resp.json().get("items")
+        items = resp.json().get("items", [])
         for calendar in items:
             name = calendar.get("summary")
             id = calendar.get("id")
@@ -85,6 +83,7 @@ class EventPoller(Thread):
         print("Stopped Event Poller.")
     
     def pollSubscriptions(self) -> None:
+        import bot  # I don't know how else to fix this problem, maybe split into multiple files
         data = bot.readData()
         subs = data.get("subscriptions", [])
         for sub in subs:
