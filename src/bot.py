@@ -32,7 +32,7 @@ authHeader: Final = {"Authorization": "Bearer " + botToken}
 
 def main() -> None:
     calendar.getAccessToken() # For on restart
-    calendar.getCalendars()
+    calendar.refreshCalendars()
     headers = {"Authorization": "Bearer " + appToken}
     response = r.post(openConnection, headers=headers)
     print("WS Status Code: " + str(response.status_code))
@@ -43,7 +43,7 @@ def main() -> None:
             try:
                 resp = json.loads(socket.recv())
                 envelope_id = resp.get("envelope_id")
-                if (envelope_id != None):
+                if (envelope_id is not None):
                     # Acknowledge event
                     socket.send(json.dumps({"envelope_id": envelope_id}))
                     if (resp.get("retry_attempt") > 0 and resp.get("retry_reason") == "timeout"): return # Ignore retries, they're annoying
@@ -76,7 +76,7 @@ def handleMentionEvent(event: dict) -> None:
             return
         calendarName = " ".join(args[1:])
         nextEvent = calendar.getNextEvent(calendarName)
-        if (nextEvent == None):
+        if (nextEvent is None):
             sendMessage(channel, "Invalid Calendar - " + calendarName + " or no future events.")
             return
         name, start, _ = nextEvent
@@ -97,7 +97,7 @@ def handleDoorbell(channel: str, user: str) -> None:
     schedule = readData()
     days = schedule.get("days")
     time = schedule.get("time")
-    if (days == None or time == None):
+    if (days is None or time is None):
         sendMessage(channel, "Schedule not created yet!")
         return
     date = datetime.now()
@@ -111,7 +111,7 @@ def handleDoorbell(channel: str, user: str) -> None:
 def handleSchedule(channel: str, args: list[str]) -> None:
     if (len(args) < 2):
         schedule = readData()
-        if (schedule.get("days") == None or schedule.get("time") == None):
+        if (schedule.get("days") is None or schedule.get("time") is None):
             sendMessage(channel, "Schedule not created yet!")
         else:
             sendMessage(channel, getFormattedSchedule(schedule))
@@ -120,10 +120,10 @@ def handleSchedule(channel: str, args: list[str]) -> None:
     else:
         days = args[1]
         time = args[2]
-        if (re.match("^[01]{7}$", days) == None):
+        if (re.match("^[01]{7}$", days) is None):
             sendMessage(channel, "Invalid days format. List 0's and 1's for the days starting at Monday.")
             return
-        if (re.match("^([0-1][0-9]|[2][0-3]):[0-5][0-9]-([0-1][0-9]|[2][0-3]):[0-5][0-9]$", time) == None):
+        if (re.match("^([0-1][0-9]|[2][0-3]):[0-5][0-9]-([0-1][0-9]|[2][0-3]):[0-5][0-9]$", time) is None):
             sendMessage(channel, "Invalid time format. Should be XX:XX-XX:XX.")
             return
         sendMessage(channel, "Wrote schedule.")
@@ -138,11 +138,11 @@ def handleSubscribe(channel: str, args: list[str]) -> None:
     else:
         remindTimeHours = float(args[1])
         calendarName = " ".join(args[2:])
-        event = calendar.getNextEvent(calendarName)
-        if (event == None):
+        nextEvent = calendar.getNextEvent(calendarName)
+        if (nextEvent is None):
             sendMessage(channel, "Invalid calendar - " + calendarName + " or no future events.")
             return
-        name, start, end = event
+        name, start, end = nextEvent
         subs: list = readData().get("subscriptions", [])
         subs.append({
             "channelId": channel,
@@ -187,8 +187,8 @@ def readData() -> dict[str, Any]:
     
 def writeData(days = None, time = None, subscriptions = []) -> None:
     # This lets you not have to write all the fields at once
-    if days == None: days = readData().get("days")
-    if time == None: time = readData().get("time")
+    if days is None: days = readData().get("days")
+    if time is None: time = readData().get("time")
     if subscriptions == []: subscriptions = readData().get("subscriptions", [])
     writeDataAll(days, time, subscriptions)
         
