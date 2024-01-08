@@ -15,7 +15,7 @@ from websockets.sync import client
 from classes import EventPoller, GoogleCalendar
 from secret import appToken, botToken, soundPath
 
-doorbellWords: Final = ["door", "noor", "abracadabra", "open sesame"]
+doorbellWords: Final = ["door", "noor", "abracadabra", "open sesame", "ding", "ring"]
 dataPath: Final = "data.json"
 mixer.init()
 sound: Final = mixer.Sound(soundPath)
