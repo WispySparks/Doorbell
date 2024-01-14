@@ -1,6 +1,7 @@
 import datetime
 import os
 import sys
+import traceback
 from pathlib import Path
 
 import bot
@@ -14,7 +15,8 @@ if __name__ == "__main__":
     bot.eventPoller.start()
     while True: 
         try:
+            x = 3 / 0
             bot.main()
         except Exception as e:
-            print(e, flush=True)
-            sys.stderr.flush()
+            print(traceback.format_exc(), flush = True)
+        sys.stderr.flush()

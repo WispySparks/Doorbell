@@ -41,7 +41,6 @@ def main() -> None:
     with client.connect(url) as socket:
         print("Connected to WebSocket.", flush=True)
         while True:
-            sys.stderr.flush()
             try:
                 resp = json.loads(socket.recv())
                 envelope_id = resp.get("envelope_id")
