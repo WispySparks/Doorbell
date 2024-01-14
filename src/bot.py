@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import sys
 from datetime import datetime, time
 from threading import Lock
 from typing import Any, Final
@@ -35,11 +36,12 @@ def main() -> None:
     calendar.refreshCalendars()
     headers = {"Authorization": "Bearer " + appToken}
     response = r.post(openConnection, headers=headers)
-    print("WS Status Code: " + str(response.status_code))
+    print("WS Status Code: " + str(response.status_code), flush=True)
     url = response.json().get("url") + "&debug_reconnects=true"
     with client.connect(url) as socket:
-        print("Connected to WebSocket.")
+        print("Connected to WebSocket.", flush=True)
         while True:
+            sys.stderr.flush()
             try:
                 resp = json.loads(socket.recv())
                 envelope_id = resp.get("envelope_id")
@@ -51,7 +53,7 @@ def main() -> None:
                     if (event.get("type") == "app_mention"):
                         handleMentionEvent(event)
             except ConnectionClosed:
-                print("Connection Closed. Refreshing . . .")
+                print("Connection Closed. Refreshing . . .", flush=True)
                 break
                 
 def handleMentionEvent(event: dict) -> None:
@@ -59,7 +61,7 @@ def handleMentionEvent(event: dict) -> None:
     text: str = event.get("text", "")
     args = text.split()[1:] # Ignore first word which is the mention
     user = getUserName(event.get("user", "")) 
-    print("Channel: {}, Args: {}, User: {}".format(channel, args, user))
+    print("Channel: {}, Args: {}, User: {}".format(channel, args, user), flush=True)
     if (len(args) < 1):
         sendMessage(channel, "Hi! (Must provide a command).")
         return
@@ -160,7 +162,7 @@ def handleSubscribe(channel: str, args: list[str]) -> None:
 def sendMessage(channelID: str, msg: str) -> None:
     payload = {"channel": channelID, "text": msg}
     r.post(postMessage, payload, headers=authHeader)
-    print("Sent " + msg)
+    print("Sent " + msg, flush=True)
     
 def getUserName(userID: str) -> str:
     payload = {"user": userID}

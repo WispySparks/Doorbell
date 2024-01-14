@@ -100,7 +100,7 @@ class EventPoller(Thread):
         while not self.stopped:
             self.pollSubscriptions()
             time.sleep(self.intervalSeconds)
-        print("Stopped Event Poller.")
+        print("Stopped Event Poller.", flush=True)
         
     def eventStruct(self, event):
         if (event is None):
