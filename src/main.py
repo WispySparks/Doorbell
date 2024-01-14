@@ -15,7 +15,6 @@ if __name__ == "__main__":
     bot.eventPoller.start()
     while True: 
         try:
-            x = 3 / 0
             bot.main()
         except Exception as e:
             print(traceback.format_exc(), flush = True)
