@@ -127,7 +127,7 @@ class EventPoller(Thread):
             name = event.get("name")
             eventStart = datetime.fromisoformat(event.get("start"))
             remindWindowStart = eventStart - timedelta(hours = remindTime)
-            if (currentDate >= remindWindowStart):
+            if (currentDate >= remindWindowStart.astimezone()):
                 bot.sendMessage(channelId, "Reminder: " + name + " - " + eventStart.strftime(GoogleCalendar.dateFormat))
                 eventEnd = datetime.fromisoformat(event.get("end"))
                 minDate = max(currentDate, eventEnd)

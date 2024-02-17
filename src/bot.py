@@ -38,22 +38,25 @@ def main() -> None:
     response = r.post(openConnection, headers=headers)
     print("WS Status Code: " + str(response.status_code), flush=True)
     url = response.json().get("url") + "&debug_reconnects=true"
-    with client.connect(url) as socket:
-        print("Connected to WebSocket.", flush=True)
-        while True:
-            try:
-                resp = json.loads(socket.recv())
-                envelope_id = resp.get("envelope_id")
-                if (envelope_id is not None):
-                    # Acknowledge event
-                    socket.send(json.dumps({"envelope_id": envelope_id}))
-                    if (resp.get("retry_attempt") > 0 and resp.get("retry_reason") == "timeout"): return # Ignore retries, they're annoying
-                    event = resp.get("payload").get("event")
-                    if (event.get("type") == "app_mention"):
-                        handleMentionEvent(event)
-            except ConnectionClosed:
-                print("Connection Closed. Refreshing . . .", flush=True)
-                break
+    try:
+        with client.connect(url) as socket:
+            print("Connected to WebSocket.", flush=True)
+            while True:
+                try:
+                    resp = json.loads(socket.recv())
+                    envelope_id = resp.get("envelope_id")
+                    if (envelope_id is not None):
+                        # Acknowledge event
+                        socket.send(json.dumps({"envelope_id": envelope_id}))
+                        if (resp.get("retry_attempt") > 0 and resp.get("retry_reason") == "timeout"): return # Ignore retries, they're annoying
+                        event = resp.get("payload").get("event")
+                        if (event.get("type") == "app_mention"):
+                            handleMentionEvent(event)
+                except ConnectionClosed:
+                    print("Connection Closed. Refreshing . . .", flush=True)
+                    break
+    except TimeoutError:
+        print("Connection timed out.")
                 
 def handleMentionEvent(event: dict) -> None:
     channel = event.get("channel", "")
