@@ -1,11 +1,12 @@
 import json
 import os
 import re
-import sys
+import pyttsx3
+
 from datetime import datetime, time
 from threading import Lock
 from typing import Any, Final
-
+import time as tim
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
 import requests as r
@@ -20,6 +21,8 @@ doorbellWords: Final = ["door", "noor", "abracadabra", "open sesame", "ding", "r
 dataPath: Final = "data.json"
 mixer.init()
 sound: Final = mixer.Sound(soundPath)
+engine = pyttsx3.init()
+engine.setProperty('rate', 100)
 calendar: Final = GoogleCalendar()
 eventPoller: Final = EventPoller(60)
 lock: Final = Lock()
@@ -69,7 +72,7 @@ def handleMentionEvent(event: dict) -> None:
         return
     cmd = args[0].lower()
     if (cmd in doorbellWords):
-        handleDoorbell(channel, user)
+        handleDoorbell(channel, user, args)
     elif (cmd == "schedule"):
         handleSchedule(channel, args)
     elif (cmd == "calendars"):
@@ -97,7 +100,7 @@ def handleMentionEvent(event: dict) -> None:
         sendMessage(channel, "Invalid argument: " + cmd + ". Valid arguments are door, " +
         "schedule, calendars, next, subscribe(not fully impl), restart, and exit.")
         
-def handleDoorbell(channel: str, user: str) -> None:
+def handleDoorbell(channel: str, user: str, args) -> None:
     schedule = readData()
     days = schedule.get("days")
     time = schedule.get("time")
@@ -106,9 +109,13 @@ def handleDoorbell(channel: str, user: str) -> None:
         return
     date = datetime.now()
     isCorrectDay = int(list(days)[date.weekday()]) == 1
+    door = "" if len(args) < 2 else args[1]
     if (isCorrectDay and isCorrectTime(time)):
         sendMessage(channel, "Ding! (" + user + ")")
         sound.play()
+        tim.sleep(sound.get_length())
+        engine.say(user + "is at the door " + door)
+        engine.runAndWait()
     else:
         sendMessage(channel, "Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
             
