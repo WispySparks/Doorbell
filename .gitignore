@@ -1,7 +1,7 @@
 .venv/
 .vscode/
-logs/
 __pycache__/
+logs/
 sounds/
-secret.py
-data.json
+**/secret.py
+**/data.json

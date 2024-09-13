@@ -1,18 +1,12 @@
 import json
-import os
 import re
-import pyttsx3
-
 from datetime import datetime, time
 from threading import Lock
+from time import sleep
 from typing import Any, Final
-import time as tim
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
-import requests as r
+import pyttsx3
 from pygame import mixer
-from websockets.exceptions import ConnectionClosed
-from websockets.sync import client
 
 from classes import EventPoller, GoogleCalendar
 from secret import appToken, botToken, soundPath
@@ -113,7 +107,7 @@ def handleDoorbell(channel: str, user: str, args) -> None:
     if (isCorrectDay and isCorrectTime(time)):
         sendMessage(channel, "Ding! (" + user + ")")
         sound.play()
-        tim.sleep(sound.get_length())
+        sleep(sound.get_length())
         engine.say(user + "is at the door " + door)
         engine.runAndWait()
     else:
