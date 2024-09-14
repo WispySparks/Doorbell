@@ -21,11 +21,11 @@ doorbellWords: Final = ["door", "noor", "abracadabra", "open sesame", "ding", "r
 mixer.init()
 sound: Final = mixer.Sound(soundPath)
 txtToSpeech = pyttsx3.init()
-txtToSpeech.setProperty('rate', 100)
+txtToSpeech.setProperty("rate", 100)
 calendar: Final = GoogleCalendar()
 # eventPoller: Final = EventPoller(60)
 
-@app.event("app_mention")
+@app.event("app_mention") #TODO make a command to update doorbell (git pull and restart)
 def handleMentionEvent(body, say) -> None:
     event = body["event"]
     channel = event["channel"]
@@ -61,9 +61,10 @@ def handleMentionEvent(body, say) -> None:
     # elif (cmd == "restart"):
     #     say("Restarting.")
     #     raise Exception("Restarting bot.")
-    elif (cmd == "exit" or cmd == "stop"):
+    elif (cmd == "exit" or cmd == "stop"): #TODO This doesn't work
         say("Stopping.")
         socketHandler.close()
+        # eventPoller.stop()
         exit()
     else:
         say("Invalid argument: " + cmd + ". Valid arguments are door, " +
@@ -116,7 +117,7 @@ def handleSchedule(say, args: list[str]) -> None:
         database.write(database.Data(schedule))
         say("Wrote schedule.\n" + database.read().scheduleToStr())
         
-def handleSubscribe(say, channel: str, args: list[str]) -> None:
+def handleSubscribe(say, channel: str, args: list[str]) -> None: #TODO This is definitely broken
     if (len(args) < 2):
         say("Must provide how many hours before to be reminded.")
     elif (len(args) < 3):
@@ -147,6 +148,6 @@ if (__name__ == "__main__"):
     if ("-l" in sys.argv):
         logDir: Final = "./logs/"
         Path(logDir).mkdir(exist_ok=True)
-        sys.stderr = sys.stdout = open(logDir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", 'w', buffering=1)
+        sys.stderr = sys.stdout = open(logDir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", buffering=1)
     database.create()
     socketHandler.start()

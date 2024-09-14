@@ -10,6 +10,7 @@ filePath: Final = "data.pickle"
 
 @dataclass(frozen=True)
 class Data:
+    #TODO Look into typed dicts and typed/named tuples, Could be an optional tuple instead of tuple[bool...]
     schedule: list[tuple[bool, time, time]] = field(default_factory=list) # 7 days long, starts at Monday
     subscriptions: list[dict] = field(default_factory=list)
     

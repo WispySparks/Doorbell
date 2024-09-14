@@ -8,6 +8,9 @@ import requests as r
 import database
 from secret import googleClientId, googleClientSecret, googleRefreshToken
 
+# TODO Split this into 2 files, look for a python package for google like bolt is to slack
+# https://github.com/googleapis/google-api-python-client
+# https://github.com/googleapis/google-auth-library-python
 
 class GoogleCalendar():
     
