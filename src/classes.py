@@ -109,8 +109,8 @@ class EventPoller(Thread):
         return {"name": name, "start": startTime.isoformat(), "end": endTime.isoformat()}
     
     def pollSubscriptions(self) -> None:
-        import bot  # I don't know how else to fix this problem, maybe split into multiple files
-        subs = bot.readData().get("subscriptions", [])
+        import app  # I don't know how else to fix this problem, maybe split into multiple files
+        subs = app.readData().get("subscriptions", [])
         sub: dict
         for sub in subs:
             currentDate = datetime.now().astimezone()
@@ -121,17 +121,17 @@ class EventPoller(Thread):
             if (event is None): # Check if a new event has been added
                 last = datetime.fromisoformat(sub.get("lastEvent", currentDate.isoformat()))
                 minDate = max(currentDate, last)
-                e = bot.calendar.getNextEvent(calendarName, minDate)
+                e = app.calendar.getNextEvent(calendarName, minDate)
                 sub.update({"nextEvent": self.eventStruct(e)})
                 continue
             name = event.get("name")
             eventStart = datetime.fromisoformat(event.get("start"))
             remindWindowStart = eventStart - timedelta(hours = remindTime)
             if (currentDate >= remindWindowStart.astimezone()):
-                bot.sendMessage(channelId, "Reminder: " + name + " - " + eventStart.strftime(GoogleCalendar.dateFormat))
+                app.app.client.chat_postMessage(channel=channelId, text="Reminder: " + name + " - " + eventStart.strftime(GoogleCalendar.dateFormat))
                 eventEnd = datetime.fromisoformat(event.get("end"))
                 minDate = max(currentDate, eventEnd)
-                nextEvent = bot.calendar.getNextEvent(calendarName, minDate)
+                nextEvent = app.calendar.getNextEvent(calendarName, minDate)
                 sub.update({"nextEvent": self.eventStruct(nextEvent)})
                 sub.update({"lastEvent": eventEnd.isoformat()})
-        bot.writeData(subscriptions = subs)
+        app.writeData(subscriptions = subs)

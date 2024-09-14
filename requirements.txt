@@ -1,3 +1,4 @@
-slack-bolt==1.20.1
 pygame==2.6.0
 pyttsx3==2.91
+requests==2.32.3
+slack-bolt==1.20.1
