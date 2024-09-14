@@ -4,4 +4,4 @@ __pycache__/
 logs/
 sounds/
 **/secret.py
-**/data.json
+**/data.pickle

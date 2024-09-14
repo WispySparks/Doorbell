@@ -5,6 +5,7 @@ from typing import Final
 
 import requests as r
 
+import database
 from secret import googleClientId, googleClientSecret, googleRefreshToken
 
 
@@ -110,7 +111,7 @@ class EventPoller(Thread):
     
     def pollSubscriptions(self) -> None:
         import app  # I don't know how else to fix this problem, maybe split into multiple files
-        subs = app.readData().get("subscriptions", [])
+        subs = database.read().subscriptions
         sub: dict
         for sub in subs:
             currentDate = datetime.now().astimezone()
@@ -134,4 +135,4 @@ class EventPoller(Thread):
                 nextEvent = app.calendar.getNextEvent(calendarName, minDate)
                 sub.update({"nextEvent": self.eventStruct(nextEvent)})
                 sub.update({"lastEvent": eventEnd.isoformat()})
-        app.writeData(subscriptions = subs)
+        database.write(database.Data(subscriptions=subs))
