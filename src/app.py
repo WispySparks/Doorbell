@@ -1,6 +1,6 @@
+import datetime as dt
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
 from time import sleep
 from typing import Final
@@ -20,8 +20,8 @@ socketHandler = SocketModeHandler(app, appToken)
 doorbellWords: Final = ["door", "noor", "abracadabra", "open sesame", "ding", "ring", "boop"]
 mixer.init()
 sound: Final = mixer.Sound(soundPath)
-engine = pyttsx3.init()
-engine.setProperty('rate', 100)
+txtToSpeech = pyttsx3.init()
+txtToSpeech.setProperty('rate', 100)
 calendar: Final = GoogleCalendar()
 # eventPoller: Final = EventPoller(60)
 
@@ -67,22 +67,24 @@ def handleMentionEvent(body, say) -> None:
         exit()
     else:
         say("Invalid argument: " + cmd + ". Valid arguments are door, " +
-        "schedule, calendars, next, subscribe(not fully impl), restart, and exit.")
+        "schedule, and exit.")
         
 def handleDoorbell(say, user: str, args: list[str]) -> None:
     schedule = database.read().schedule
     if (not schedule):
         say("Schedule not created yet!")
         return
-    date = datetime.now()
+    date = dt.datetime.now()
     validDay, startTime, endTime = schedule[date.weekday()]
     door = "" if len(args) < 2 else args[1]
     if (validDay and (startTime <= date.time() <= endTime)):
         say("Ding! (" + user + ")")
         sound.play()
         sleep(sound.get_length())
-        engine.say(user + "is at the door " + door)
-        engine.runAndWait()
+        if (txtToSpeech._inLoop):
+            txtToSpeech.endLoop()
+        txtToSpeech.say(user + "is at the door " + door)
+        txtToSpeech.runAndWait()
     else:
         say("Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
             
@@ -93,18 +95,25 @@ def handleSchedule(say, args: list[str]) -> None:
             say("Schedule not created yet!")
         else:
             say(data.scheduleToStr())
-    elif (len(args) < 3):
-        say("Need an argument for days and an argument for time.")
+    elif (len(args) < 8):
+        say("Need to specify the times of each day that doorbell can run or use a `-` to not run that day." +
+            " It starts with Monday all the way till Sunday, e.g. 14:10-16:30 - - - - 12:00-13:00 -")
     else:
-        days = args[1]
-        time = args[2]
-        if (re.match("^[01]{7}$", days) is None):
-            say("Invalid days format. List 0's and 1's for the days starting at Monday.")
-            return
-        if (re.match("^([0-1][0-9]|[2][0-3]):[0-5][0-9]-([0-1][0-9]|[2][0-3]):[0-5][0-9]$", time) is None):
-            say("Invalid time format. Should be XX:XX-XX:XX.")
-            return
-        database.write(database.Data())
+        schedule: list[tuple[bool, dt.time, dt.time]] = []
+        activeTimes = args[1:] 
+        for day in range(7):
+            time = activeTimes[day]
+            if (time == "-"):
+                schedule.append((False, dt.time(), dt.time()))
+            elif (re.match("^([0-1][0-9]|[2][0-3]):[0-5][0-9]-([0-1][0-9]|[2][0-3]):[0-5][0-9]$", time) is None):
+                say("Invalid time format. Should be XX:XX-XX:XX in 24 hour time.")
+                return
+            else:
+                start, end = time.split("-")
+                startTime = dt.time(int(start.split(":")[0]), int(start.split(":")[1]))
+                endTime = dt.time(int(end.split(":")[0]), int(end.split(":")[1]))        
+                schedule.append((True, startTime, endTime))
+        database.write(database.Data(schedule))
         say("Wrote schedule.\n" + database.read().scheduleToStr())
         
 def handleSubscribe(say, channel: str, args: list[str]) -> None:
@@ -138,7 +147,6 @@ if (__name__ == "__main__"):
     if ("-l" in sys.argv):
         logDir: Final = "./logs/"
         Path(logDir).mkdir(exist_ok=True)
-        sys.stderr = sys.stdout = open(logDir + datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", 'w', buffering=1)
+        sys.stderr = sys.stdout = open(logDir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", 'w', buffering=1)
     database.create()
-    print("Hiiai")
     socketHandler.start()
