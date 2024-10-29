@@ -3,7 +3,7 @@ import pickle
 from dataclasses import dataclass, field
 from datetime import time
 from threading import Lock
-from typing import Final, NamedTuple, Optional, override
+from typing import Final, NamedTuple, Optional
 
 lock: Final = Lock()
 filePath: Final = "data.pickle"
@@ -14,8 +14,7 @@ class Data:
     schedule: list[Optional[DayTuple]] = field(default_factory=list) # 7 days long, starts at Monday
     subscriptions: list[dict] = field(default_factory=list)
     
-    @override
-    def __str__(self) -> str:
+    def scheduleToStr(self) -> str:
         return "Mo: " + self.__dayToStr(self.schedule[0]) \
         + " | Tu: " + self.__dayToStr(self.schedule[1]) \
         + " | We: " + self.__dayToStr(self.schedule[2]) \

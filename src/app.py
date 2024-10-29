@@ -14,7 +14,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_bolt.util.utils import get_boot_message
 
 import database
-from classes import GoogleCalendar
+from google_calendar import GoogleCalendar
 from secret import appToken, botToken, soundPath
 
 app = App(token=botToken)
@@ -26,7 +26,6 @@ sound: Final = mixer.Sound(soundPath)
 txtToSpeech = pyttsx3.init()
 txtToSpeech.setProperty("rate", 100)
 calendar: Final = GoogleCalendar()
-# eventPoller: Final = EventPoller(60)
 #TODO docopt?
 @app.event("app_mention")
 def handleMentionEvent(body, say) -> None:
@@ -46,21 +45,6 @@ def handleMentionEvent(body, say) -> None:
         handleDoorbell(say, userName, args)
     elif (cmd == "schedule"):
         handleSchedule(say, args)
-    # elif (cmd == "calendars"):
-    #     say(", ".join(list(calendar.calendars.keys())))
-    # elif (cmd == "next"):
-    #     if (len(args) < 2):
-    #         say("Need to provide a calendar.")
-    #         return
-    #     calendarName = " ".join(args[1:])
-    #     nextEvent = calendar.getNextEvent(calendarName)
-    #     if (nextEvent is None):
-    #         say("Invalid Calendar - " + calendarName + " or no future events.")
-    #         return
-    #     name, start, _ = nextEvent
-    #     say(name + " - " + start.strftime(GoogleCalendar.dateFormat))
-    # elif (cmd == "subscribe"):
-    #     handleSubscribe(say, channel, args)
     elif (cmd == "restart"):
         restart(say)
     elif (cmd == "update"):
@@ -72,7 +56,7 @@ def handleMentionEvent(body, say) -> None:
         socketHandler.close()
     else:
         say("Invalid argument: " + cmd + ". Valid arguments are door, " +
-        "schedule, and exit.")
+        "schedule, restart, update, and exit.")
         
 def handleDoorbell(say, user: str, args: list[str]) -> None:
     schedule = database.read().schedule
@@ -99,7 +83,7 @@ def handleSchedule(say, args: list[str]) -> None:
         if (not data.schedule):
             say("Schedule not created yet!")
         else:
-            say(str(data))
+            say(data.scheduleToStr())
     elif (len(args) < 8):
         say("Need to specify the times of each day that doorbell can run or use a `-` to not run that day." +
             " It starts with Monday all the way till Sunday, e.g. 14:10-16:30 - - - - 12:00-13:00 -")
@@ -119,7 +103,7 @@ def handleSchedule(say, args: list[str]) -> None:
                 endTime = dt.time(int(end.split(":")[0]), int(end.split(":")[1]))        
                 schedule.append(database.DayTuple(startTime, endTime))
         database.write(database.Data(schedule))
-        say("Wrote schedule.\n" + str(database.read()))
+        say("Wrote schedule.\n" + database.read().scheduleToStr())
         
 def handleSubscribe(say, channel: str, args: list[str]) -> None: #TODO This is definitely broken
     if (len(args) < 2):
