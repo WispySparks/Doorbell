@@ -24,8 +24,9 @@ class Data:
         + " | Su: " + self.__dayToStr(self.schedule[6])
     
     def __dayToStr(self, day: Optional[DayTuple]) -> str:
+        timeFormat = "%I:%M %p"
         if (day is None): return "--"
-        return day.startTime.strftime("%I:%M %p") + " - " + day.endTime.strftime("%I:%M %p")
+        return day.startTime.strftime(timeFormat) + " - " + day.endTime.strftime(timeFormat)
         
 
 def create() -> None:
