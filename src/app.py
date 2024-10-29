@@ -65,7 +65,7 @@ def handleDoorbell(say, user: str, args: list[str]) -> None:
         return
     date = dt.datetime.now()
     day = schedule[date.weekday()]
-    if (day is not None and (day.startTime <= date.time() <= day[1])):
+    if (day is not None and (day.startTime <= date.time() <= day.endTime)):
         say("Ding! (" + user + ")")
         sound.play()
         sleep(sound.get_length())
