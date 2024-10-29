@@ -1,7 +1,7 @@
 import sys
 
 sys.path.append("src/")
-from classes import GoogleCalendar
+from google_calendar import GoogleCalendar
 
 calendar = GoogleCalendar()
 

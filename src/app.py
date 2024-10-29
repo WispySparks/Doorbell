@@ -26,7 +26,7 @@ sound: Final = mixer.Sound(soundPath)
 txtToSpeech = pyttsx3.init()
 txtToSpeech.setProperty("rate", 100)
 calendar: Final = GoogleCalendar()
-#TODO docopt?
+#TODO docopt?, spotify
 @app.event("app_mention")
 def handleMentionEvent(body, say) -> None:
     event = body["event"]
