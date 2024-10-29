@@ -3,30 +3,30 @@ import pickle
 from dataclasses import dataclass, field
 from datetime import time
 from threading import Lock
-from typing import Final
+from typing import Final, NamedTuple, Optional, override
 
 lock: Final = Lock()
 filePath: Final = "data.pickle"
+DayTuple = NamedTuple("DayTuple", [("startTime", time), ("endTime", time)])
 
 @dataclass(frozen=True)
 class Data:
-    #TODO Look into typed dicts and typed/named tuples, Could be an optional tuple instead of tuple[bool...]
-    schedule: list[tuple[bool, time, time]] = field(default_factory=list) # 7 days long, starts at Monday
+    schedule: list[Optional[DayTuple]] = field(default_factory=list) # 7 days long, starts at Monday
     subscriptions: list[dict] = field(default_factory=list)
     
-    def scheduleToStr(self) -> str:
+    @override
+    def __str__(self) -> str:
         return "Mo: " + self.__dayToStr(self.schedule[0]) \
-        + " Tu: " + self.__dayToStr(self.schedule[1]) \
-        + " We: " + self.__dayToStr(self.schedule[2]) \
-        + " Th: " + self.__dayToStr(self.schedule[3]) \
-        + " Fr: " + self.__dayToStr(self.schedule[4]) \
-        + " Sa: " + self.__dayToStr(self.schedule[5]) \
-        + " Su: " + self.__dayToStr(self.schedule[6])
+        + " | Tu: " + self.__dayToStr(self.schedule[1]) \
+        + " | We: " + self.__dayToStr(self.schedule[2]) \
+        + " | Th: " + self.__dayToStr(self.schedule[3]) \
+        + " | Fr: " + self.__dayToStr(self.schedule[4]) \
+        + " | Sa: " + self.__dayToStr(self.schedule[5]) \
+        + " | Su: " + self.__dayToStr(self.schedule[6])
     
-    def __dayToStr(self, day: tuple[bool, time, time]) -> str:
-        validDay, start, end = day
-        if (not validDay): return "--"
-        return start.strftime("%H:%M") + "-" + end.strftime("%H:%M")
+    def __dayToStr(self, day: Optional[DayTuple]) -> str:
+        if (day is None): return "--"
+        return day.startTime.strftime("%I:%M %p") + " - " + day.endTime.strftime("%I:%M %p")
         
 
 def create() -> None:
