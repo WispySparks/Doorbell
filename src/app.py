@@ -149,11 +149,14 @@ def playSong(say: Say, args: list[str]) -> None:
         say("Spotify has not connected to Doorbell.")
         return
     songURL = args[1].replace("<", "").replace(">", "") # Links in slack are bound by angle brackets
+    if (not re.match("^https://open\\.spotify\\.com/", songURL)):
+        say("Invalid Spotify URL.")
+        return
     try:
         spicetifyClientConnection.send(songURL)
     except ConnectionClosed:
         spicetifyClientConnection = None
-        say("Doorbell has lost connection to Spotify.")
+        say("Doorbell has lost connection with Spotify.")
     else:
         say("Added " + songURL + " to the queue.", unfurl_links=False, unfurl_media=False)
     
