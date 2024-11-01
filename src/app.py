@@ -31,7 +31,6 @@ txtToSpeech.setProperty("rate", 100)
 calendar: Final = GoogleCalendar()
 spicetifyClientConnection = None
 #TODO docopt?, attempt to make code more pythonic / PEP8 (to an extent)
-#TODO doesn't shutdown
 @app.event("app_mention")
 def handleMentionEvent(body: dict, say: Say) -> None:
     event = body["event"]
@@ -169,7 +168,7 @@ def onClientConnection(client: server.ServerConnection) -> None:
     global spicetifyClientConnection
     print("Spicetify has connected!")
     spicetifyClientConnection = client
-    while True: pass
+    while not slackSocketHandler.client.closed: pass
 
 if (__name__ == "__main__"):
     # There's three main threads/processes, the slack thread which handles all the slack event processing,
