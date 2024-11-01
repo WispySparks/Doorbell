@@ -13,6 +13,7 @@ from pygame import mixer
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_bolt.context.say import Say
+from websockets.exceptions import ConnectionClosed
 from websockets.sync import server
 
 import database
@@ -140,15 +141,21 @@ def handleSubscribe(say: Say, channel: str, args: list[str]) -> None: #TODO This
         say("Subscribed to " + calendarName + " and reminds " + str(remindTimeHours) + " hours before.")
 
 def playSong(say: Say, args: list[str]) -> None:
-    songURL = args[1].replace("<", "").replace(">", "") # Links in slack are bound by angle brackets
-    if (songURL is None):
-        say("Must give a spotify track URL.")
+    global spicetifyClientConnection
+    if (len(args) < 2):
+        say("Must give a Spotify track URL.")
         return
     if (spicetifyClientConnection is None):
         say("Spotify has not connected to Doorbell.")
         return
-    spicetifyClientConnection.send(songURL)
-    say("Playing " + songURL + ".", unfurl_links=False, unfurl_media=False)
+    songURL = args[1].replace("<", "").replace(">", "") # Links in slack are bound by angle brackets
+    try:
+        spicetifyClientConnection.send(songURL)
+    except ConnectionClosed:
+        spicetifyClientConnection = None
+        say("Doorbell has lost connection to Spotify.")
+    else:
+        say("Added " + songURL + " to the queue.", unfurl_links=False, unfurl_media=False)
     
 def restart(say: Say) -> None:
     say("Restarting.")

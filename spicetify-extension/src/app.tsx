@@ -2,9 +2,9 @@ function createSocket() {
   const websocket = new WebSocket("ws://localhost:8765/");
   websocket.onopen = () => console.log("Doorbell Integration: Connected to Doorbell.");
   websocket.onmessage = (event) => {
-    const uri = Spicetify.URI.fromString(event.data);
+    const uri = Spicetify.URI.from(event.data);
     if (uri) {
-      Spicetify.Player.playUri(uri.toURI());
+      Spicetify.addToQueue([{ uri: uri.toURI() }]);
     }
   }
   websocket.onclose = () => {
