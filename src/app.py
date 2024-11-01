@@ -12,6 +12,7 @@ import pyttsx3
 from pygame import mixer
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+from slack_bolt.context.say import Say
 from websockets.sync import server
 
 import database
@@ -28,15 +29,17 @@ txtToSpeech = pyttsx3.init()
 txtToSpeech.setProperty("rate", 100)
 calendar: Final = GoogleCalendar()
 spicetifyClientConnection = None
-#TODO docopt?, spotify, attempt to make code more pythonic / PEP8 (to an extent)
+#TODO docopt?, attempt to make code more pythonic / PEP8 (to an extent)
+#TODO spicetify doesn't try to connect if the server was created afterwards, doesn't shutdown
 @app.event("app_mention")
-def handleMentionEvent(body, say) -> None:
+def handleMentionEvent(body: dict, say: Say) -> None:
     event = body["event"]
     channel = event["channel"]
     text: str = event["text"]
     user = event["user"]
     userName = app.client.users_info(user=user)["user"]["real_name"]
     args = text.lower().split()[1:] # Ignore first word which is the mention
+    caseSensitiveArgs = text.split()[1:] # Needed for URLs
     print("Channel: {}, Args: {}, User: {}".format(channel, args, userName))
     
     if (len(args) < 1):
@@ -48,7 +51,7 @@ def handleMentionEvent(body, say) -> None:
     elif (cmd == "schedule"):
         handleSchedule(say, args)
     elif (cmd == "play"):
-        playSong(say, args)
+        playSong(say, caseSensitiveArgs)
     elif (cmd == "restart"):
         restart(say)
     elif (cmd == "update"):
@@ -62,7 +65,7 @@ def handleMentionEvent(body, say) -> None:
         say("Invalid argument: " + cmd + ". Valid arguments are door, " +
         "schedule, restart, update, and exit.")
         
-def handleDoorbell(say, user: str, args: list[str]) -> None:
+def handleDoorbell(say: Say, user: str, args: list[str]) -> None:
     schedule = database.read().schedule
     if (not schedule):
         say("Schedule not created yet!")
@@ -81,7 +84,7 @@ def handleDoorbell(say, user: str, args: list[str]) -> None:
     else:
         say("Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
             
-def handleSchedule(say, args: list[str]) -> None:
+def handleSchedule(say: Say, args: list[str]) -> None:
     if (len(args) < 2):
         data = database.read()
         if (not data.schedule):
@@ -109,7 +112,7 @@ def handleSchedule(say, args: list[str]) -> None:
         database.write(database.Data(schedule))
         say("Wrote schedule.\n" + database.read().scheduleToStr())
         
-def handleSubscribe(say, channel: str, args: list[str]) -> None: #TODO This is definitely broken
+def handleSubscribe(say: Say, channel: str, args: list[str]) -> None: #TODO This is definitely broken
     if (len(args) < 2):
         say("Must provide how many hours before to be reminded.")
     elif (len(args) < 3):
@@ -136,8 +139,8 @@ def handleSubscribe(say, channel: str, args: list[str]) -> None: #TODO This is d
         database.write(database.Data(subscriptions = subs))
         say("Subscribed to " + calendarName + " and reminds " + str(remindTimeHours) + " hours before.")
 
-def playSong(say, args: list[str]) -> None:
-    songURL = args[1]
+def playSong(say: Say, args: list[str]) -> None:
+    songURL = args[1].replace("<", "").replace(">", "") # Links in slack are bound by angle brackets
     if (songURL is None):
         say("Must give a spotify track URL.")
         return
@@ -145,16 +148,18 @@ def playSong(say, args: list[str]) -> None:
         say("Spotify has not connected to Doorbell.")
         return
     spicetifyClientConnection.send(songURL)
+    say("Playing " + songURL + ".", unfurl_links=False, unfurl_media=False)
     
-def restart(say) -> None:
+def restart(say: Say) -> None:
     say("Restarting.")
     slackSocketHandler.close()
     os.execl(sys.executable, f"{sys.executable}", *sys.argv)
     
-def onClientConnection(client: server.ServerConnection):
+def onClientConnection(client: server.ServerConnection) -> None:
     global spicetifyClientConnection
     print("Spicetify has connected!")
     spicetifyClientConnection = client
+    while True: pass
 
 if (__name__ == "__main__"):
     # There's three main threads/processes, the slack thread which handles all the slack event processing,
