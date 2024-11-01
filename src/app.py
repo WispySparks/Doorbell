@@ -30,7 +30,7 @@ txtToSpeech.setProperty("rate", 100)
 calendar: Final = GoogleCalendar()
 spicetifyClientConnection = None
 #TODO docopt?, attempt to make code more pythonic / PEP8 (to an extent)
-#TODO spicetify doesn't try to connect if the server was created afterwards, doesn't shutdown
+#TODO doesn't shutdown
 @app.event("app_mention")
 def handleMentionEvent(body: dict, say: Say) -> None:
     event = body["event"]
@@ -63,7 +63,7 @@ def handleMentionEvent(body: dict, say: Say) -> None:
         slackSocketHandler.close()
     else:
         say("Invalid argument: " + cmd + ". Valid arguments are door, " +
-        "schedule, restart, update, and exit.")
+        "schedule, play, restart, update, and exit.")
         
 def handleDoorbell(say: Say, user: str, args: list[str]) -> None:
     schedule = database.read().schedule

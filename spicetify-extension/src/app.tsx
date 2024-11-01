@@ -1,5 +1,4 @@
-async function main() {
-  console.log("Doorbell Integration: Starting.")
+function createSocket() {
   const websocket = new WebSocket("ws://localhost:8765/");
   websocket.onopen = () => console.log("Doorbell Integration: Connected to Doorbell.");
   websocket.onmessage = (event) => {
@@ -8,6 +7,15 @@ async function main() {
       Spicetify.Player.playUri(uri.toURI());
     }
   }
+  websocket.onclose = () => {
+    console.log("Doorbell Integration: Connection failed/closed with Doorbell.");
+    setTimeout(createSocket, 10000)
+  }
+}
+
+async function main() {
+  console.log("Doorbell Integration: Started.")
+  createSocket()
 }
 
 export default main;
