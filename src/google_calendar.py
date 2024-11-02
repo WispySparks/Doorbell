@@ -9,42 +9,44 @@ from secret import googleClientId, googleClientSecret, googleRefreshToken
 # https://github.com/googleapis/google-api-python-client
 # https://github.com/googleapis/google-auth-library-python
 
-class GoogleCalendar():
-    
+
+class GoogleCalendar:
+
     headers: dict[str, str] = {"Authorization": "Bearer "}
     calendars: dict[str, str] = {}
-    dateFormat: Final[str] = "%#m/%d/%Y - %#I:%M %p" # Only works on windows machines
+    dateFormat: Final[str] = "%#m/%d/%Y - %#I:%M %p"  # Only works on windows machines
     maxRetries: Final[int] = 3
-    
+
     def __init__(self) -> None:
         self.getAccessToken()
         self.refreshCalendars()
-        
+
     def isTokenExpired(self, resp) -> bool:
         json = resp.json()
-        if (json.get("error") is not None): # Too many ways for token to fail
+        if json.get("error") is not None:  # Too many ways for token to fail
             return True
         return False
-    
+
     def getAccessToken(self) -> None:
         endpoint = "https://oauth2.googleapis.com/token"
         payload = {
             "client_id": googleClientId,
             "client_secret": googleClientSecret,
             "refresh_token": googleRefreshToken,
-            "grant_type": "refresh_token"
+            "grant_type": "refresh_token",
         }
         resp = r.post(endpoint, payload)
         json = resp.json()
-        if (json.get("access_token") is not None):
+        if json.get("access_token") is not None:
             self.headers = {"Authorization": "Bearer " + json.get("access_token")}
-            
+
     def refreshCalendars(self) -> None:
         self.calendars = {}
         endpoint = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
         resp = r.get(endpoint, headers=self.headers)
         for _ in range(self.maxRetries):
-            if (not self.isTokenExpired(resp)): break
+            if not self.isTokenExpired(resp):
+                break
             self.getAccessToken()
             resp = r.get(endpoint, headers=self.headers)
         items = resp.json().get("items", [])
@@ -52,35 +54,48 @@ class GoogleCalendar():
             name = calendar.get("summary")
             id = calendar.get("id")
             self.calendars.update({name: id})
-            
-    def getEvents(self, calendarName, minDate: datetime|None = None) -> list[tuple[str, datetime, datetime]]:
+
+    def getEvents(self, calendarName, minDate: datetime | None = None) -> list[tuple[str, datetime, datetime]]:
         events = []
         id = self.calendars.get(calendarName)
-        if (id is None): return events
+        if id is None:
+            return events
         endpoint = "https://www.googleapis.com/calendar/v3/calendars/" + id + "/events"
-        if (minDate is None): minDate = datetime.now().astimezone()
+        if minDate is None:
+            minDate = datetime.now().astimezone()
         payload = {
             "orderBy": "startTime",
             "singleEvents": True,
-            "timeMin": minDate.isoformat() # This goes by event end time unfortunately
+            "timeMin": minDate.isoformat(),  # This goes by event end time unfortunately
         }
         resp = r.get(endpoint, payload, headers=self.headers)
         for _ in range(self.maxRetries):
-            if (not self.isTokenExpired(resp)): break
+            if not self.isTokenExpired(resp):
+                break
             self.getAccessToken()
             resp = r.get(endpoint, headers=self.headers)
         items = resp.json().get("items", [])
         for event in items:
             name = event.get("summary")
-            start = event.get("start").get("date") if event.get("start").get("dateTime") is None else event.get("start").get("dateTime")
-            end = event.get("end").get("date") if event.get("end").get("dateTime") is None else event.get("end").get("dateTime")
+            start = (
+                event.get("start").get("date")
+                if event.get("start").get("dateTime") is None
+                else event.get("start").get("dateTime")
+            )
+            end = (
+                event.get("end").get("date")
+                if event.get("end").get("dateTime") is None
+                else event.get("end").get("dateTime")
+            )
             start = datetime.fromisoformat(start)
             end = datetime.fromisoformat(end)
             events.append((name, start, end))
         return events
-    
-    def getNextEvent(self, calendarName, minDate: datetime|None = None) -> tuple[str, datetime, datetime] | None:
-        '''Returns a tuple structured with the event's name, event's start date and event's end date or None if there is no next event.'''
+
+    def getNextEvent(self, calendarName, minDate: datetime | None = None) -> tuple[str, datetime, datetime] | None:
+        """Returns a tuple structured with the event's name, event's start date and event's end date
+        or None if there is no next event."""
         events = self.getEvents(calendarName, minDate)
-        if len(events) < 1: return None
+        if len(events) < 1:
+            return None
         return events[0]
