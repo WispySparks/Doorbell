@@ -56,10 +56,10 @@ def handleMentionEvent(body: dict, say: Say) -> None:
     elif cmd == "restart":
         restart(say)
     elif cmd == "update":
-        result = subprocess.run("git pull", capture_output=True, text=True)
+        result = subprocess.run("git pull", capture_output=True, text=True, check=False)
         say(str(result.stdout) + " " + str(result.stderr))
         restart(say)
-    elif cmd == "exit" or cmd == "stop":
+    elif cmd in ("exit", "stop"):
         say("Stopping.")
         slackSocketHandler.close()
     else:
@@ -187,9 +187,10 @@ if __name__ == "__main__":
     if "-l" in sys.argv:
         logDir: Final = "./logs/"
         Path(logDir).mkdir(exist_ok=True)
-        sys.stderr = sys.stdout = open(
-            logDir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", buffering=1
-        )
+        with open(
+            logDir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", encoding="utf-8", buffering=1
+        ) as file:
+            sys.stderr = sys.stdout = file
     database.create()
     slackSocketHandler.connect()
     websocketServer = server.serve(onClientConnection, "localhost", 8765)

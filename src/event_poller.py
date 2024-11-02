@@ -43,8 +43,7 @@ class EventPoller(Thread):
             if event is None:  # Check if a new event has been added
                 last = datetime.fromisoformat(sub.get("lastEvent", currentDate.isoformat()))
                 minDate = max(currentDate, last)
-                e = app.calendar.getNextEvent(calendarName, minDate)
-                sub.update({"nextEvent": self.eventStruct(e)})
+                sub.update({"nextEvent": self.eventStruct(app.calendar.getNextEvent(calendarName, minDate))})
                 continue
             name = event.get("name")
             eventStart = datetime.fromisoformat(event.get("start"))

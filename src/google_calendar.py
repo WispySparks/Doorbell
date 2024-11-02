@@ -16,6 +16,7 @@ class GoogleCalendar:
     calendars: dict[str, str] = {}
     dateFormat: Final[str] = "%#m/%d/%Y - %#I:%M %p"  # Only works on windows machines
     maxRetries: Final[int] = 3
+    requestTimeout: Final[int] = 10
 
     def __init__(self) -> None:
         self.getAccessToken()
@@ -35,7 +36,7 @@ class GoogleCalendar:
             "refresh_token": googleRefreshToken,
             "grant_type": "refresh_token",
         }
-        resp = r.post(endpoint, payload)
+        resp = r.post(endpoint, payload, timeout=self.requestTimeout)
         json = resp.json()
         if json.get("access_token") is not None:
             self.headers = {"Authorization": "Bearer " + json.get("access_token")}
@@ -43,24 +44,24 @@ class GoogleCalendar:
     def refreshCalendars(self) -> None:
         self.calendars = {}
         endpoint = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
-        resp = r.get(endpoint, headers=self.headers)
+        resp = r.get(endpoint, headers=self.headers, timeout=self.requestTimeout)
         for _ in range(self.maxRetries):
             if not self.isTokenExpired(resp):
                 break
             self.getAccessToken()
-            resp = r.get(endpoint, headers=self.headers)
+            resp = r.get(endpoint, headers=self.headers, timeout=self.requestTimeout)
         items = resp.json().get("items", [])
         for calendar in items:
             name = calendar.get("summary")
-            id = calendar.get("id")
-            self.calendars.update({name: id})
+            calendar_id = calendar.get("id")
+            self.calendars.update({name: calendar_id})
 
     def getEvents(self, calendarName, minDate: datetime | None = None) -> list[tuple[str, datetime, datetime]]:
         events = []
-        id = self.calendars.get(calendarName)
-        if id is None:
+        calendar_id = self.calendars.get(calendarName)
+        if calendar_id is None:
             return events
-        endpoint = "https://www.googleapis.com/calendar/v3/calendars/" + id + "/events"
+        endpoint = "https://www.googleapis.com/calendar/v3/calendars/" + calendar_id + "/events"
         if minDate is None:
             minDate = datetime.now().astimezone()
         payload = {
@@ -68,12 +69,12 @@ class GoogleCalendar:
             "singleEvents": True,
             "timeMin": minDate.isoformat(),  # This goes by event end time unfortunately
         }
-        resp = r.get(endpoint, payload, headers=self.headers)
+        resp = r.get(endpoint, payload, headers=self.headers, timeout=self.requestTimeout)
         for _ in range(self.maxRetries):
             if not self.isTokenExpired(resp):
                 break
             self.getAccessToken()
-            resp = r.get(endpoint, headers=self.headers)
+            resp = r.get(endpoint, headers=self.headers, timeout=self.requestTimeout)
         items = resp.json().get("items", [])
         for event in items:
             name = event.get("summary")
