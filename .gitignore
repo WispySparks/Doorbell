@@ -1,9 +1,10 @@
+.mypy_cache/
 .venv/
 .vscode/
 __pycache__/
 logs/
 sounds/
-**/secret.py
-**/data.pickle
 **/node_modules/
 **/dist/
+**/secret.py
+**/data.pickle
