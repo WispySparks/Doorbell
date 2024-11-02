@@ -77,13 +77,12 @@ def handleDoorbell(say: Say, user: str, args: list[str]) -> None:
         say("Ding! (" + user + ")")
         sound.play()
         sleep(sound.get_length())
-        if txtToSpeech._inLoop:
-            txtToSpeech.endLoop()
         door = "" if len(args) < 2 else args[1]
         if not re.match(r"^\d{2}[a-z]$", door):
             door = ""
         txtToSpeech.say(user + "is at the door " + door)
         txtToSpeech.runAndWait()
+        txtToSpeech.stop()
     else:
         say("Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
 
