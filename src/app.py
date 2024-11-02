@@ -80,6 +80,8 @@ def handleDoorbell(say: Say, user: str, args: list[str]) -> None:
         if txtToSpeech._inLoop:
             txtToSpeech.endLoop()
         door = "" if len(args) < 2 else args[1]
+        if not re.match(r"^\d{2}[a-z]$", door):
+            door = ""
         txtToSpeech.say(user + "is at the door " + door)
         txtToSpeech.runAndWait()
     else:
