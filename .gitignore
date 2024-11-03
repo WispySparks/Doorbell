@@ -8,3 +8,6 @@ sounds/
 **/dist/
 **/secret.py
 **/data.pickle
+# Google Calendar Auth
+credentials.json
+token.json

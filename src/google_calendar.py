@@ -1,82 +1,58 @@
+import os.path
 from datetime import datetime
-from typing import Final
+from typing import Final, Optional
 
-import requests as r
-
-from secret import googleClientId, googleClientSecret, googleRefreshToken
-
-# TODO look for a python package for google like bolt is to slack
-# https://github.com/googleapis/google-api-python-client
-# https://github.com/googleapis/google-auth-library-python
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 
 class GoogleCalendar:
 
-    headers: dict[str, str] = {"Authorization": "Bearer "}
-    calendars: dict[str, str] = {}
-    dateFormat: Final[str] = "%#m/%d/%Y - %#I:%M %p"  # Only works on windows machines
-    maxRetries: Final[int] = 3
-    requestTimeout: Final[int] = 10
+    SCOPES: Final = ["https://www.googleapis.com/auth/calendar.readonly"]
+    DATE_FORMAT: Final[str] = "%#m/%d/%Y - %#I:%M %p"  # Only works on windows machines
+    calendars: dict[str, str] = {}  # Name: CalendarID
 
     def __init__(self) -> None:
-        self.getAccessToken()
-        self.refreshCalendars()
+        try:
+            creds = None
+            if os.path.exists("token.json"):
+                creds = Credentials.from_authorized_user_file("token.json", self.SCOPES)
+            if not creds or not creds.valid:
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                else:
+                    flow = InstalledAppFlow.from_client_secrets_file("credentials.json", self.SCOPES)
+                    creds = flow.run_local_server(port=0)
+                with open("token.json", "w") as token:
+                    token.write(creds.to_json())
+            self.service = build("calendar", "v3", credentials=creds)
+            result = self.service.calendarList().list().execute()
+            calendarList: list[dict] = result.get("items", [])
+            if calendarList:
+                for calendar in calendarList:
+                    name = calendar.get("summary", "")
+                    calendar_id = calendar.get("id", "")
+                    self.calendars.update({name: calendar_id})
+        except HttpError as error:
+            print(f"GoogleCalendar Error: {error}")
 
-    def isTokenExpired(self, resp) -> bool:
-        json = resp.json()
-        if json.get("error") is not None:  # Too many ways for token to fail
-            return True
-        return False
-
-    def getAccessToken(self) -> None:
-        endpoint = "https://oauth2.googleapis.com/token"
-        payload = {
-            "client_id": googleClientId,
-            "client_secret": googleClientSecret,
-            "refresh_token": googleRefreshToken,
-            "grant_type": "refresh_token",
-        }
-        resp = r.post(endpoint, payload, timeout=self.requestTimeout)
-        json = resp.json()
-        if json.get("access_token") is not None:
-            self.headers = {"Authorization": "Bearer " + json.get("access_token")}
-
-    def refreshCalendars(self) -> None:
-        self.calendars = {}
-        endpoint = "https://www.googleapis.com/calendar/v3/users/me/calendarList"
-        resp = r.get(endpoint, headers=self.headers, timeout=self.requestTimeout)
-        for _ in range(self.maxRetries):
-            if not self.isTokenExpired(resp):
-                break
-            self.getAccessToken()
-            resp = r.get(endpoint, headers=self.headers, timeout=self.requestTimeout)
-        items = resp.json().get("items", [])
-        for calendar in items:
-            name = calendar.get("summary")
-            calendar_id = calendar.get("id")
-            self.calendars.update({name: calendar_id})
-
-    def getEvents(self, calendarName, minDate: datetime | None = None) -> list[tuple[str, datetime, datetime]]:
+    def getEvents(self, calendar: str, minDate: Optional[datetime] = None) -> list[tuple[str, datetime, datetime]]:
         events = []
-        calendar_id = self.calendars.get(calendarName)
+        calendar_id = self.calendars.get(calendar)
         if calendar_id is None:
             return events
-        endpoint = "https://www.googleapis.com/calendar/v3/calendars/" + calendar_id + "/events"
         if minDate is None:
             minDate = datetime.now().astimezone()
-        payload = {
-            "orderBy": "startTime",
-            "singleEvents": True,
-            "timeMin": minDate.isoformat(),  # This goes by event end time unfortunately
-        }
-        resp = r.get(endpoint, payload, headers=self.headers, timeout=self.requestTimeout)
-        for _ in range(self.maxRetries):
-            if not self.isTokenExpired(resp):
-                break
-            self.getAccessToken()
-            resp = r.get(endpoint, headers=self.headers, timeout=self.requestTimeout)
-        items = resp.json().get("items", [])
-        for event in items:
+        result = (
+            self.service.events()
+            .list(calendarId=calendar_id, orderBy="startTime", singleEvents=True, timeMin=minDate.isoformat())
+            .execute()
+            .get("items", [])
+        )
+        for event in result:
             name = event.get("summary")
             start = (
                 event.get("start").get("date")
@@ -93,10 +69,12 @@ class GoogleCalendar:
             events.append((name, start, end))
         return events
 
-    def getNextEvent(self, calendarName, minDate: datetime | None = None) -> tuple[str, datetime, datetime] | None:
+    def getNextEvent(
+        self, calendar: str, minDate: Optional[datetime] = None
+    ) -> Optional[tuple[str, datetime, datetime]]:
         """Returns a tuple structured with the event's name, event's start date and event's end date
         or None if there is no next event."""
-        events = self.getEvents(calendarName, minDate)
-        if len(events) < 1:
-            return None
-        return events[0]
+        events = self.getEvents(calendar, minDate)
+        if events:
+            return events[0]
+        return None
