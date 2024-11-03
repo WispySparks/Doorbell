@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, timedelta
 from threading import Thread
+from typing import Optional
 
 import app
 import database
@@ -9,53 +10,56 @@ from google_calendar import GoogleCalendar
 
 class EventPoller(Thread):
 
-    def __init__(self, intervalSeconds) -> None:
+    def __init__(self, interval_seconds: int) -> None:
         super().__init__()
-        self._target = self.continuouslyPoll
-        self.intervalSeconds = intervalSeconds
+        self._target = self.continuously_poll
+        self.interval_seconds = interval_seconds
         self.stopped = False
 
     def stop(self):
         self.stopped = True
 
-    def continuouslyPoll(self) -> None:
+    def continuously_poll(self) -> None:
         time.sleep(5)
         while not self.stopped:
-            self.pollSubscriptions()
-            time.sleep(self.intervalSeconds)
-        print("Stopped Event Poller.", flush=True)
+            self.poll_subscriptions()
+            time.sleep(self.interval_seconds)
+        print("Stopped Event Poller.")
 
-    def eventStruct(self, event):
+    def event_struct(self, event: tuple[str, datetime, datetime]) -> Optional[dict]:
         if event is None:
             return None
-        name, startTime, endTime = event
-        return {"name": name, "start": startTime.isoformat(), "end": endTime.isoformat()}
+        name, start_time, end_time = event
+        return {"name": name, "start": start_time.isoformat(), "end": end_time.isoformat()}
 
-    def pollSubscriptions(self) -> None:
+    def poll_subscriptions(self) -> None:
         subs = database.read().subscriptions
         sub: dict
         for sub in subs:
-            currentDate = datetime.now().astimezone()
-            channelId = sub.get("channelId", "")
-            calendarName = sub.get("calendarName", "")
-            remindTime = sub.get("remindTime", 0)
+            current_date = datetime.now().astimezone()
+            channel_id = sub.get("channelId", "")
+            calendar_name = sub.get("calendarName", "")
+            remind_time = sub.get("remindTime", 0)
             event = sub.get("nextEvent")
             if event is None:  # Check if a new event has been added
-                last = datetime.fromisoformat(sub.get("lastEvent", currentDate.isoformat()))
-                minDate = max(currentDate, last)
-                sub.update({"nextEvent": self.eventStruct(app.calendar.get_next_event(calendarName, minDate))})
+                last = datetime.fromisoformat(sub.get("lastEvent", current_date.isoformat()))
+                min_date = max(current_date, last)
+                next_event = app.calendar.get_next_event(calendar_name, min_date)
+                if next_event is not None:
+                    sub.update({"nextEvent": self.event_struct(next_event)})
                 continue
             name = event.get("name")
-            eventStart = datetime.fromisoformat(event.get("start"))
-            remindWindowStart = eventStart - timedelta(hours=remindTime)
-            if currentDate >= remindWindowStart.astimezone():
+            event_start = datetime.fromisoformat(event.get("start"))
+            remind_window_start = event_start - timedelta(hours=remind_time)
+            if current_date >= remind_window_start.astimezone():
                 app.app.client.chat_postMessage(
-                    channel=channelId,
-                    text="Reminder: " + name + " - " + eventStart.strftime(GoogleCalendar.DATE_FORMAT),
+                    channel=channel_id,
+                    text="Reminder: " + name + " - " + event_start.strftime(GoogleCalendar.DATE_FORMAT),
                 )
-                eventEnd = datetime.fromisoformat(event.get("end"))
-                minDate = max(currentDate, eventEnd)
-                nextEvent = app.calendar.get_next_event(calendarName, minDate)
-                sub.update({"nextEvent": self.eventStruct(nextEvent)})
-                sub.update({"lastEvent": eventEnd.isoformat()})
+                event_end = datetime.fromisoformat(event.get("end"))
+                min_date = max(current_date, event_end)
+                next_event = app.calendar.get_next_event(calendar_name, min_date)
+                if next_event is not None:
+                    sub.update({"nextEvent": self.event_struct(next_event)})
+                sub.update({"lastEvent": event_end.isoformat()})
         database.write(database.Data(subscriptions=subs))
