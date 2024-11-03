@@ -32,7 +32,7 @@ txt_to_speech.setProperty("rate", 100)
 spicetify_client_connection: Optional[server.ServerConnection] = None
 
 
-@app.event("app_mention")  # TODO google_calendar(calendars next subscribe) docopt?, attempt to make code more pythonic
+@app.event("app_mention")  # TODO docopt?, attempt to make code more pythonic
 def mention_event(body: dict, say: Say) -> None:
     event = body["event"]
     channel = event["channel"]
@@ -51,6 +51,19 @@ def mention_event(body: dict, say: Say) -> None:
         doorbell(say, user_name, args)
     elif cmd == "schedule":
         manage_schedule(say, args)
+    elif cmd == "calendars":
+        say("Calendars: " + ", ".join(list(calendar.calendars.keys())))
+    elif cmd == "next":
+        if len(case_sensitive_args) < 2:
+            say("Need to provide a calendar.")
+            return
+        calendar_name = " ".join(case_sensitive_args[1:])
+        event = calendar.get_next_event(calendar_name)
+        if event is None:
+            say(f"Invalid Calendar - {calendar_name} or no future events.")
+            return
+        name, start, _ = event
+        say(f"{name} - {start.strftime(GoogleCalendar.DATE_FORMAT)}")
     elif cmd == "play":
         play_song(say, case_sensitive_args)
     elif cmd == "restart":
@@ -63,7 +76,9 @@ def mention_event(body: dict, say: Say) -> None:
         say("Stopping.")
         slack_socket_handler.close()
     else:
-        say("Invalid argument: " + cmd + ". Valid arguments are door, " + "schedule, play, restart, update, and exit.")
+        say(
+            f"Invalid argument: {cmd}. Valid arguments are door, schedule, calendars, next, play, restart, update, and exit."
+        )
 
 
 def doorbell(say: Say, user: str, args: list[str]) -> None:
@@ -80,9 +95,10 @@ def doorbell(say: Say, user: str, args: list[str]) -> None:
         door = "" if len(args) < 2 else args[1]
         if not re.match(r"^\d{2}[a-z]$", door):
             door = ""
+        if txt_to_speech._inLoop:
+            txt_to_speech.endLoop()
         txt_to_speech.say(user + "is at the door " + door)
         txt_to_speech.runAndWait()
-        txt_to_speech.stop()
     else:
         say("Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
 
