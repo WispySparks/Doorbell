@@ -54,7 +54,7 @@ class EventPoller(Thread):
             if current_date >= remind_window_start.astimezone():
                 app.app.client.chat_postMessage(
                     channel=channel_id,
-                    text="Reminder: " + name + " - " + event_start.strftime(GoogleCalendar.DATE_FORMAT),
+                    text=f"Reminder: {name} - {event_start.strftime(GoogleCalendar.DATE_FORMAT)}",
                 )
                 event_end = datetime.fromisoformat(event.get("end"))
                 min_date = max(current_date, event_end)

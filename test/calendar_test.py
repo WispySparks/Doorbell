@@ -7,17 +7,17 @@ calendar = GoogleCalendar()
 
 
 def print_calendars():
-    print("Calendars: " + ", ".join(list(calendar.calendars.keys())))
+    print("Calendars: " + ", ".join(list(calendar.calendars)))
 
 
 def print_events():
-    for c in calendar.calendars.keys():
+    for c in calendar.calendars:
         event = calendar.get_next_event(c)
         if event is None:
-            print(c + ": None")
+            print(f"{c}: None")
             continue
         name, date, _ = event
-        print(c + ": " + name + " - " + date.strftime(GoogleCalendar.DATE_FORMAT))
+        print(f"{c}: {name} - {date.strftime(GoogleCalendar.DATE_FORMAT)}")
 
 
 print_calendars()

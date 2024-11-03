@@ -16,23 +16,21 @@ class Data:
     subscriptions: list[dict] = field(default_factory=list)
 
     def schedule_to_str(self) -> str:
-        # fmt: off
         return (
-            "Mo: " + self.__day_to_str(self.schedule[0])
-            + " | Tu: " + self.__day_to_str(self.schedule[1])
-            + " | We: " + self.__day_to_str(self.schedule[2])
-            + " | Th: " + self.__day_to_str(self.schedule[3])
-            + " | Fr: " + self.__day_to_str(self.schedule[4])
-            + " | Sa: " + self.__day_to_str(self.schedule[5])
-            + " | Su: " + self.__day_to_str(self.schedule[6])
+            f"Mo: {self.__day_to_str(self.schedule[0])}"
+            + f" | Tu: {self.__day_to_str(self.schedule[1])}"
+            + f" | We: {self.__day_to_str(self.schedule[2])}"
+            + f" | Th: {self.__day_to_str(self.schedule[3])}"
+            + f" | Fr: {self.__day_to_str(self.schedule[4])}"
+            + f" | Sa: {self.__day_to_str(self.schedule[5])}"
+            + f" | Su: {self.__day_to_str(self.schedule[6])}"
         )
-        # fmt: on
 
     def __day_to_str(self, day: Optional[DayTuple]) -> str:
         time_format = "%I:%M %p"
         if day is None:
             return "--"
-        return day.start_time.strftime(time_format) + " - " + day.end_time.strftime(time_format)
+        return f"{day.start_time.strftime(time_format)} - {day.end_time.strftime(time_format)}"
 
 
 def create() -> None:

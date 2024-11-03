@@ -32,7 +32,7 @@ txt_to_speech.setProperty("rate", 100)
 spicetify_client_connection: Optional[server.ServerConnection] = None
 
 
-@app.event("app_mention")  # TODO docopt?, attempt to make code more pythonic
+@app.event("app_mention")  # TODO docopt?, calendar subscriptions + event poller
 def mention_event(body: dict, say: Say) -> None:
     event = body["event"]
     channel = event["channel"]
@@ -52,7 +52,7 @@ def mention_event(body: dict, say: Say) -> None:
     elif cmd == "schedule":
         manage_schedule(say, args)
     elif cmd == "calendars":
-        say("Calendars: " + ", ".join(list(calendar.calendars.keys())))
+        say("Calendars: " + ", ".join(list(calendar.calendars)))
     elif cmd == "next":
         if len(case_sensitive_args) < 2:
             say("Need to provide a calendar.")
@@ -70,7 +70,7 @@ def mention_event(body: dict, say: Say) -> None:
         restart(say)
     elif cmd == "update":
         result = subprocess.run("git pull", capture_output=True, text=True, check=False)
-        say(str(result.stdout) + " " + str(result.stderr))
+        say(f"{str(result.stdout)} {str(result.stderr)}")
         restart(say)
     elif cmd in ("exit", "stop"):
         say("Stopping.")
@@ -89,7 +89,7 @@ def doorbell(say: Say, user: str, args: list[str]) -> None:
     date = dt.datetime.now()
     day = schedule[date.weekday()]
     if day is not None and (day.start_time <= date.time() <= day.end_time):
-        say("Ding! (" + user + ")")
+        say(f"Ding! ({user})")
         sound.play()
         sleep(sound.get_length())
         door = "" if len(args) < 2 else args[1]
@@ -97,7 +97,7 @@ def doorbell(say: Say, user: str, args: list[str]) -> None:
             door = ""
         if txt_to_speech._inLoop:
             txt_to_speech.endLoop()
-        txt_to_speech.say(user + "is at the door " + door)
+        txt_to_speech.say(f"{user} is at the door {door}")
         txt_to_speech.runAndWait()
     else:
         say("Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
@@ -131,10 +131,10 @@ def manage_schedule(say: Say, args: list[str]) -> None:
                 end_time = dt.time(int(end.split(":")[0]), int(end.split(":")[1]))
                 schedule.append(database.DayTuple(start_time, end_time))
         database.write(database.Data(schedule))
-        say("Wrote schedule.\n" + database.read().schedule_to_str())
+        say(f"Wrote schedule.\n{database.read().schedule_to_str()}")
 
 
-def calendar_subscribe(say: Say, channel: str, args: list[str]) -> None:  # TODO This is definitely broken
+def calendar_subscribe(say: Say, channel: str, args: list[str]) -> None:
     if len(args) < 2:
         say("Must provide how many hours before to be reminded.")
     elif len(args) < 3:
@@ -144,7 +144,7 @@ def calendar_subscribe(say: Say, channel: str, args: list[str]) -> None:  # TODO
         calendar_name = " ".join(args[2:])
         next_event = calendar.get_next_event(calendar_name)
         if next_event is None:
-            say("Invalid calendar - " + calendar_name + " or no future events.")
+            say(f"Invalid calendar - {calendar_name} or no future events.")
             return
         name, start, end = next_event
         subs: list = database.read().subscriptions
@@ -157,7 +157,7 @@ def calendar_subscribe(say: Say, channel: str, args: list[str]) -> None:  # TODO
             }
         )
         database.write(database.Data(subscriptions=subs))
-        say("Subscribed to " + calendar_name + " and reminds " + str(remind_time_hours) + " hours before.")
+        say(f"Subscribed to {calendar_name} and reminds {str(remind_time_hours)} hours before.")
 
 
 def play_song(say: Say, args: list[str]) -> None:
@@ -178,7 +178,7 @@ def play_song(say: Say, args: list[str]) -> None:
         spicetify_client_connection = None
         say("Doorbell has lost connection with Spotify.")
     else:
-        say("Added " + song_url + " to the queue.", unfurl_links=False, unfurl_media=False)
+        say(f"Added {song_url} to the queue.", unfurl_links=False, unfurl_media=False)
 
 
 def restart(say: Say) -> None:
@@ -207,10 +207,10 @@ if __name__ == "__main__":
         )
     database.create()
     slack_socket_handler.connect()
-    websocketServer = server.serve(on_client_connection, "localhost", 8765)
-    Thread(target=websocketServer.serve_forever).start()
+    websocket_server = server.serve(on_client_connection, "localhost", 8765)
+    Thread(target=websocket_server.serve_forever).start()
     print("Started Doorbell!")
     while not slack_socket_handler.client.closed:
         pass
-    websocketServer.shutdown()
+    websocket_server.shutdown()
     print("Exited Doorbell.")
