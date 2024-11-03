@@ -43,7 +43,7 @@ class EventPoller(Thread):
             if event is None:  # Check if a new event has been added
                 last = datetime.fromisoformat(sub.get("lastEvent", currentDate.isoformat()))
                 minDate = max(currentDate, last)
-                sub.update({"nextEvent": self.eventStruct(app.calendar.getNextEvent(calendarName, minDate))})
+                sub.update({"nextEvent": self.eventStruct(app.calendar.get_next_event(calendarName, minDate))})
                 continue
             name = event.get("name")
             eventStart = datetime.fromisoformat(event.get("start"))
@@ -55,7 +55,7 @@ class EventPoller(Thread):
                 )
                 eventEnd = datetime.fromisoformat(event.get("end"))
                 minDate = max(currentDate, eventEnd)
-                nextEvent = app.calendar.getNextEvent(calendarName, minDate)
+                nextEvent = app.calendar.get_next_event(calendarName, minDate)
                 sub.update({"nextEvent": self.eventStruct(nextEvent)})
                 sub.update({"lastEvent": eventEnd.isoformat()})
         database.write(database.Data(subscriptions=subs))

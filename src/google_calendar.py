@@ -1,3 +1,5 @@
+"""Contains the GoogleCalendar class for accessing the team's calendar."""
+
 import os.path
 from datetime import datetime
 from typing import Final, Optional
@@ -10,6 +12,7 @@ from googleapiclient.errors import HttpError
 
 
 class GoogleCalendar:
+    """Interfaces with the Armada Robotics's Google Calendar."""
 
     SCOPES: Final = ["https://www.googleapis.com/auth/calendar.readonly"]
     DATE_FORMAT: Final[str] = "%#m/%d/%Y - %#I:%M %p"  # Only works on windows machines
@@ -26,29 +29,31 @@ class GoogleCalendar:
                 else:
                     flow = InstalledAppFlow.from_client_secrets_file("credentials.json", self.SCOPES)
                     creds = flow.run_local_server(port=0)
-                with open("token.json", "w") as token:
+                with open("token.json", "w", encoding="utf-8") as token:
                     token.write(creds.to_json())
             self.service = build("calendar", "v3", credentials=creds)
             result = self.service.calendarList().list().execute()
-            calendarList: list[dict] = result.get("items", [])
-            if calendarList:
-                for calendar in calendarList:
+            calendar_list: list[dict] = result.get("items", [])
+            if calendar_list:
+                for calendar in calendar_list:
                     name = calendar.get("summary", "")
                     calendar_id = calendar.get("id", "")
                     self.calendars.update({name: calendar_id})
         except HttpError as error:
             print(f"GoogleCalendar Error: {error}")
 
-    def getEvents(self, calendar: str, minDate: Optional[datetime] = None) -> list[tuple[str, datetime, datetime]]:
-        events = []
+    def get_events(self, calendar: str, min_date: Optional[datetime] = None) -> list[tuple[str, datetime, datetime]]:
+        """Returns list of events for the given calendar
+        in the form of a tuple with the event's name, start date, and end date."""
+        events: list[tuple[str, datetime, datetime]] = []
         calendar_id = self.calendars.get(calendar)
         if calendar_id is None:
             return events
-        if minDate is None:
-            minDate = datetime.now().astimezone()
+        if min_date is None:
+            min_date = datetime.now().astimezone()
         result = (
             self.service.events()
-            .list(calendarId=calendar_id, orderBy="startTime", singleEvents=True, timeMin=minDate.isoformat())
+            .list(calendarId=calendar_id, orderBy="startTime", singleEvents=True, timeMin=min_date.isoformat())
             .execute()
             .get("items", [])
         )
@@ -69,12 +74,12 @@ class GoogleCalendar:
             events.append((name, start, end))
         return events
 
-    def getNextEvent(
-        self, calendar: str, minDate: Optional[datetime] = None
+    def get_next_event(
+        self, calendar: str, min_date: Optional[datetime] = None
     ) -> Optional[tuple[str, datetime, datetime]]:
         """Returns a tuple structured with the event's name, event's start date and event's end date
         or None if there is no next event."""
-        events = self.getEvents(calendar, minDate)
+        events = self.get_events(calendar, min_date)
         if events:
             return events[0]
         return None

@@ -6,13 +6,13 @@ from google_calendar import GoogleCalendar
 calendar = GoogleCalendar()
 
 
-def printCalendars():
+def print_calendars():
     print("Calendars: " + ", ".join(list(calendar.calendars.keys())))
 
 
-def printEvents():
+def print_events():
     for c in calendar.calendars.keys():
-        event = calendar.getNextEvent(c)
+        event = calendar.get_next_event(c)
         if event is None:
             print(c + ": None")
             continue
@@ -20,5 +20,5 @@ def printEvents():
         print(c + ": " + name + " - " + date.strftime(GoogleCalendar.DATE_FORMAT))
 
 
-printCalendars()
-printEvents()
+print_calendars()
+print_events()

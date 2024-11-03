@@ -126,7 +126,7 @@ def handleSubscribe(say: Say, channel: str, args: list[str]) -> None:  # TODO Th
     else:
         remindTimeHours = float(args[1])
         calendarName = " ".join(args[2:])
-        nextEvent = calendar.getNextEvent(calendarName)
+        nextEvent = calendar.get_next_event(calendarName)
         if nextEvent is None:
             say("Invalid calendar - " + calendarName + " or no future events.")
             return
