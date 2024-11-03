@@ -32,7 +32,7 @@ calendar: Final = GoogleCalendar()
 spicetifyClientConnection = None
 
 
-@app.event("app_mention")  # TODO docopt?, attempt to make code more pythonic
+@app.event("app_mention")  # TODO google_calendar(calendars next subscribe) docopt?, attempt to make code more pythonic
 def handleMentionEvent(body: dict, say: Say) -> None:
     event = body["event"]
     channel = event["channel"]
