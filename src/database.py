@@ -7,7 +7,7 @@ from typing import Final, NamedTuple, Optional
 
 LOCK: Final = Lock()
 FILE_PATH: Final = "data.pickle"
-DayTuple = NamedTuple("DayTuple", [("startTime", time), ("endTime", time)])
+DayTuple = NamedTuple("DayTuple", [("start_time", time), ("end_time", time)])
 
 
 @dataclass(frozen=True)
@@ -32,7 +32,7 @@ class Data:
         time_format = "%I:%M %p"
         if day is None:
             return "--"
-        return day.startTime.strftime(time_format) + " - " + day.endTime.strftime(time_format)
+        return day.start_time.strftime(time_format) + " - " + day.end_time.strftime(time_format)
 
 
 def create() -> None:
