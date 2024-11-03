@@ -202,10 +202,9 @@ if __name__ == "__main__":
     if "-l" in sys.argv:
         LOG_DIR: Final = "./logs/"
         Path(LOG_DIR).mkdir(exist_ok=True)
-        with open(
+        sys.stderr = sys.stdout = open(
             LOG_DIR + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", encoding="utf-8", buffering=1
-        ) as file:
-            sys.stderr = sys.stdout = file
+        )
     database.create()
     slack_socket_handler.connect()
     websocketServer = server.serve(on_client_connection, "localhost", 8765)
