@@ -18,14 +18,14 @@ from websockets.sync import server
 
 import database
 from google_calendar import GoogleCalendar
-from secret import appToken, botToken, soundPath
+from secret import APP_TOKEN, BOT_TOKEN, SOUND_PATH
 
-app = App(token=botToken)
-slackSocketHandler = SocketModeHandler(app, appToken)
+app = App(token=BOT_TOKEN)
+slackSocketHandler = SocketModeHandler(app, APP_TOKEN)
 
 doorbellWords: Final = ["door", "noor", "abracadabra", "open sesame", "ding", "ring", "boop"]
 mixer.init()
-sound: Final = mixer.Sound(soundPath)
+sound: Final = mixer.Sound(SOUND_PATH)
 txtToSpeech = pyttsx3.init()
 txtToSpeech.setProperty("rate", 100)
 calendar: Final = GoogleCalendar()
@@ -93,7 +93,7 @@ def handleSchedule(say: Say, args: list[str]) -> None:
         if not data.schedule:
             say("Schedule not created yet!")
         else:
-            say(data.scheduleToStr())
+            say(data.schedule_to_str())
     elif len(args) < 8:
         say(
             "Need to specify the times of each day that doorbell can run or use a `-` to not run that day."
@@ -115,7 +115,7 @@ def handleSchedule(say: Say, args: list[str]) -> None:
                 endTime = dt.time(int(end.split(":")[0]), int(end.split(":")[1]))
                 schedule.append(database.DayTuple(startTime, endTime))
         database.write(database.Data(schedule))
-        say("Wrote schedule.\n" + database.read().scheduleToStr())
+        say("Wrote schedule.\n" + database.read().schedule_to_str())
 
 
 def handleSubscribe(say: Say, channel: str, args: list[str]) -> None:  # TODO This is definitely broken
