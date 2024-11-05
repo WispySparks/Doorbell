@@ -18,14 +18,14 @@ from websockets.sync import server
 
 import database
 from google_calendar import GoogleCalendar
-from secret import APP_TOKEN, BOT_TOKEN, SOUND_PATH
+from secret import APP_TOKEN, BOT_TOKEN
 
 mixer.init()
 
 app = App(token=BOT_TOKEN)
 slack_socket_handler = SocketModeHandler(app, APP_TOKEN)
 DOORBELL_WORDS: Final = ["door", "noor", "abracadabra", "open sesame", "ding", "ring", "boop"]
-sound = mixer.Sound(SOUND_PATH)
+sound = mixer.Sound("./sounds/ding.wav")
 calendar = GoogleCalendar()
 txt_to_speech = pyttsx3.init()
 txt_to_speech.setProperty("rate", 100)
@@ -70,6 +70,7 @@ def mention_event(body: dict, say: Say) -> None:
         restart(say)
     elif cmd == "update":
         result = subprocess.run("git pull", capture_output=True, text=True, check=False)
+        subprocess.run("pip install -r ./requirements.txt", capture_output=True, text=True, check=False)
         say(f"{str(result.stdout)} {str(result.stderr)}")
         restart(say)
     elif cmd in ("exit", "stop"):
