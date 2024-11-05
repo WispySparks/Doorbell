@@ -4,8 +4,10 @@
 __pycache__/
 logs/
 sounds/
+# Spicetify Extension
 **/node_modules/
 **/dist/
+# Doorbell Data
 **/secret.py
 **/data.pickle
 # Google Calendar Auth
