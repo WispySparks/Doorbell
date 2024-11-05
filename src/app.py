@@ -32,7 +32,7 @@ txt_to_speech.setProperty("rate", 100)
 spicetify_client_connection: Optional[server.ServerConnection] = None
 
 
-@app.event("app_mention")  # TODO docopt?, calendar subscriptions + event poller
+@app.event("app_mention")  # TODO docopt?, calendar subscriptions + event poller, could make update work with spicetify
 def mention_event(body: dict, say: Say) -> None:
     event = body["event"]
     channel = event["channel"]

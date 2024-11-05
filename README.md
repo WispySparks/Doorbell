@@ -15,7 +15,7 @@ Installing dependencies.
 ```
 pip install -r ./requirements.txt
 ```
-Doorbell depends on some Slack tokens which should be stored in a `src/secret.py` file with their values. You can see their imports in `src/app.py`. These tokens can be found on Slack Apps. Also the first time you run the bot it will have you sign into the Armada Robotics Google account so that it can store the relevant tokens for accessing the Google calendar.
+Doorbell depends on some Slack tokens which should be stored in a `src/secret.py` file with their values. You can see their imports in `src/app.py`. These tokens can be found on [Slack Apps](https://api.slack.com/apps). Also the first time you run the bot it will have you sign into the Armada Robotics Google account so that it can store the relevant tokens for accessing the Google calendar.
 
 ### Running
 To run Doorbell normally simply launch `src/app.py`.
