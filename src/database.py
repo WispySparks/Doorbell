@@ -5,8 +5,10 @@ from datetime import time
 from threading import Lock
 from typing import Final, NamedTuple, Optional
 
+from util import relative_path_from_root
+
 LOCK: Final = Lock()
-FILE_PATH: Final = "data.pickle"
+FILE_PATH: Final = relative_path_from_root("data.pickle")
 DayTuple = NamedTuple("DayTuple", [("start_time", time), ("end_time", time)])
 
 
