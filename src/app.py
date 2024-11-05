@@ -18,14 +18,14 @@ from websockets.sync import server
 
 import database
 from google_calendar import GoogleCalendar
-from secret import APP_TOKEN, BOT_TOKEN
+from secret import APP_TOKEN, BOT_TOKEN, SOUND_PATH
 
 mixer.init()
 
 app = App(token=BOT_TOKEN)
 slack_socket_handler = SocketModeHandler(app, APP_TOKEN)
 DOORBELL_WORDS: Final = ["door", "noor", "abracadabra", "open sesame", "ding", "ring", "boop"]
-sound = mixer.Sound("./sounds/ding.wav")
+sound = mixer.Sound(SOUND_PATH)
 calendar = GoogleCalendar()
 txt_to_speech = pyttsx3.init()
 txt_to_speech.setProperty("rate", 100)
