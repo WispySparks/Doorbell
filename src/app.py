@@ -33,6 +33,7 @@ spicetify_client_connection: Optional[server.ServerConnection] = None
 
 
 @app.event("app_mention")  # TODO docopt?, calendar subscriptions + event poller, could make update work with spicetify
+# and could have a command to delete data for updates to the database structure (has to be done)
 def mention_event(body: dict, say: Say) -> None:
     event = body["event"]
     channel = event["channel"]

@@ -47,3 +47,9 @@ def write(data: Data) -> None:
     with LOCK:
         with open(FILE_PATH, "wb") as f:
             pickle.dump(data, f)
+
+
+def delete() -> None:
+    with LOCK:
+        if os.path.exists(FILE_PATH):
+            os.remove(FILE_PATH)
