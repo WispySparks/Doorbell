@@ -32,6 +32,7 @@ txt_to_speech.setProperty("rate", 100)
 spicetify_client_connection: Optional[server.ServerConnection] = None
 
 
+#! There's a deadlock somewhere, tts doesn't work in the background
 @app.event("app_mention")  # TODO docopt?, calendar subscriptions + event poller, could make update work with spicetify
 # and could have a command to delete data for updates to the database structure (has to be done)
 def mention_event(body: dict, say: Say) -> None:
@@ -83,9 +84,8 @@ def mention_event(body: dict, say: Say) -> None:
         say("Stopping.")
         slack_socket_handler.close()
     else:
-        say(
-            f"Invalid argument: {cmd}. Valid arguments are door, schedule, calendars, next, play, restart, update, and exit."
-        )
+        invalid = "" if cmd == "help" else f"Invalid argument: {cmd}. "
+        say(f"{invalid}Valid arguments are door, schedule, calendars, next, play, restart, update, and exit.")
 
 
 def doorbell(say: Say, user: str, args: list[str]) -> None:
