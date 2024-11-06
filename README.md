@@ -28,8 +28,9 @@ python src/app.py -l
 ```
 Generally you'll want Doorbell to run automatically when your server/computer starts up. For Windows you can use the Task Scheduler or cron for Unix. Here's a command for creating a Windows Task that starts Doorbell everytime the computer turns on.
 ```bat
-schtasks /Create /TN "Doorbell" /TR "\"C:/path/to/.venv/Scripts/pythonw.exe\" \"C:/path/to/Doorbell/src/app.py\" -l" /SC ONSTART /RU SYSTEM
+schtasks /Create /TN "Doorbell" /TR "\"C:/path/to/.venv/Scripts/pythonw.exe\" \"C:/path/to/Doorbell/src/app.py\" -l" /SC ONSTART /RU yourusername /RP
 ```
+That gets you most of the way there but you should access the task in the GUI and set the task -> properties -> actions -> "start in" to the root of Doorbell (C:/path/to/Doorbell).
 
 ### Setting up Spicetify / Spotify integration
 Doorbell's Spotify integration works by loading a custom extension using [Spicetify](https://spicetify.app/).

@@ -71,7 +71,12 @@ def mention_event(body: dict, say: Say) -> None:
         restart(say)
     elif cmd == "update":
         result = subprocess.run("git pull", capture_output=True, text=True, check=False)
-        subprocess.run("pip install -r ./requirements.txt", capture_output=True, text=True, check=False)
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         say(f"{str(result.stdout)} {str(result.stderr)}")
         restart(say)
     elif cmd in ("exit", "stop"):
