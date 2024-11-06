@@ -10,8 +10,6 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from util import relative_path_from_root
-
 
 class GoogleCalendar:
     """Interfaces with the Armada Robotics's Google Calendar."""
@@ -21,19 +19,17 @@ class GoogleCalendar:
     calendars: dict[str, str] = {}  # Name: CalendarID
 
     def __init__(self) -> None:
-        TOKEN_PATH: Final = relative_path_from_root("token.json")
-        CREDENTIALS_PATH: Final = relative_path_from_root("credentials.json")
         try:
             creds = None
-            if os.path.exists(TOKEN_PATH):
-                creds = Credentials.from_authorized_user_file(TOKEN_PATH, self.SCOPES)
+            if os.path.exists("token.json"):
+                creds = Credentials.from_authorized_user_file("token.json", self.SCOPES)
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
                     creds.refresh(Request())
                 else:
-                    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_PATH, self.SCOPES)
+                    flow = InstalledAppFlow.from_client_secrets_file("credentials.json", self.SCOPES)
                     creds = flow.run_local_server(port=0)
-                with open(TOKEN_PATH, "w", encoding="utf-8") as token:
+                with open("token.json", "w", encoding="utf-8") as token:
                     token.write(creds.to_json())
             self.service = build("calendar", "v3", credentials=creds)
             result = self.service.calendarList().list().execute()
