@@ -1,9 +1,16 @@
 pygame==2.6.1
-pyttsx3==2.98
 slack-bolt==1.21.2
 websockets==13.1
 google-api-python-client==2.151.0
 google-auth-oauthlib==1.2.1
+# Tooling
 black==24.10.0
 pylint==3.3.1
 mypy==1.13.0
+# TTS
+winrt-Windows.Foundation==2.3.0
+winrt-Windows.Media.Core==2.3.0
+winrt-Windows.Media.Playback==2.3.0
+winrt-Windows.Media.SpeechSynthesis==2.3.0
+winrt-Windows.Storage==2.3.0
+winrt-Windows.Storage.Streams==2.3.0

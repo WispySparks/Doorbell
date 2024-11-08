@@ -8,7 +8,6 @@ from threading import Thread
 from time import sleep
 from typing import Final, Optional
 
-import pyttsx3
 from pygame import mixer
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
@@ -19,6 +18,7 @@ from websockets.sync import server
 import database
 from google_calendar import GoogleCalendar
 from secret import APP_TOKEN, BOT_TOKEN, SOUND_PATH
+from tts import TTS
 
 mixer.init()
 
@@ -27,12 +27,11 @@ slack_socket_handler = SocketModeHandler(app, APP_TOKEN)
 DOORBELL_WORDS: Final = ["door", "noor", "abracadabra", "open sesame", "ding", "ring", "boop"]
 sound = mixer.Sound(SOUND_PATH)
 calendar = GoogleCalendar()
-txt_to_speech = pyttsx3.init()
-txt_to_speech.setProperty("rate", 100)
+text_to_speech = TTS()
 spicetify_client_connection: Optional[server.ServerConnection] = None
 
 
-#! There's a deadlock somewhere, tts doesn't work in the background
+#! There's a deadlock somewhere
 @app.event("app_mention")  # TODO docopt?, calendar subscriptions + event poller, could make update work with spicetify
 # and could have a command to delete data for updates to the database structure (has to be done)
 def mention_event(body: dict, say: Say) -> None:
@@ -102,10 +101,7 @@ def doorbell(say: Say, user: str, args: list[str]) -> None:
         door = "" if len(args) < 2 else args[1]
         if not re.match(r"^\d{2}[a-z]$", door):
             door = ""
-        if txt_to_speech._inLoop:
-            txt_to_speech.endLoop()
-        txt_to_speech.say(f"{user} is at the door {door}")
-        txt_to_speech.runAndWait()
+        text_to_speech.say(f"{user} is at the door {door}", blocking=True)
     else:
         say("Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
 
