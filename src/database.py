@@ -17,16 +17,16 @@ class Data:
 
     def schedule_to_str(self) -> str:
         return (
-            f"Mo: {self.__day_to_str(self.schedule[0])}"
-            + f" | Tu: {self.__day_to_str(self.schedule[1])}"
-            + f" | We: {self.__day_to_str(self.schedule[2])}"
-            + f" | Th: {self.__day_to_str(self.schedule[3])}"
-            + f" | Fr: {self.__day_to_str(self.schedule[4])}"
-            + f" | Sa: {self.__day_to_str(self.schedule[5])}"
-            + f" | Su: {self.__day_to_str(self.schedule[6])}"
+            f"Mo: {self._day_to_str(self.schedule[0])}"
+            + f" | Tu: {self._day_to_str(self.schedule[1])}"
+            + f" | We: {self._day_to_str(self.schedule[2])}"
+            + f" | Th: {self._day_to_str(self.schedule[3])}"
+            + f" | Fr: {self._day_to_str(self.schedule[4])}"
+            + f" | Sa: {self._day_to_str(self.schedule[5])}"
+            + f" | Su: {self._day_to_str(self.schedule[6])}"
         )
 
-    def __day_to_str(self, day: Optional[DayTuple]) -> str:
+    def _day_to_str(self, day: Optional[DayTuple]) -> str:
         time_format = "%I:%M %p"
         if day is None:
             return "--"

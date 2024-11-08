@@ -1,6 +1,10 @@
+# Audio
 pygame==2.6.1
+# Slack
 slack-bolt==1.21.2
+# Spicetify
 websockets==13.1
+# Google Calendar
 google-api-python-client==2.151.0
 google-auth-oauthlib==1.2.1
 # Tooling

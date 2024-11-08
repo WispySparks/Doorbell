@@ -1,7 +1,6 @@
 import sys
 
 sys.path.append("src/")
-
 from time import sleep
 
 from tts import TTS
