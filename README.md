@@ -26,7 +26,7 @@ If you want to log to a file (if you're running Doorbell silently) then add the 
 ```
 python src/app.py -l
 ```
-Generally you'll want Doorbell to run automatically when your server/computer starts up. For Windows you can use the Task Scheduler or cron for Unix. Here's a command for creating a Windows Task that starts Doorbell everytime the computer turns on.
+Generally you'll want Doorbell to run automatically when your server/computer starts up. For Windows you can use the Task Scheduler or cron for Unix. Here's a command for creating a Windows Task that starts Doorbell every time the computer turns on.
 ```bat
 schtasks /Create /TN "Doorbell" /TR "\"C:/path/to/.venv/Scripts/pythonw.exe\" \"C:/path/to/Doorbell/src/app.py\" -l" /SC ONSTART /RU yourusername /RP
 ```
