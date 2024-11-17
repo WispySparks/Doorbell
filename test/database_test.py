@@ -1,6 +1,5 @@
-import sys
+"""Tests that the database can be created, read, and written to."""
 
-sys.path.append("src/")
 import database
 
 database.create()

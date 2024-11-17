@@ -15,7 +15,7 @@ Installing dependencies.
 ```
 pip install -r ./requirements.txt
 ```
-Doorbell depends on some Slack tokens which should be stored in a `src/secret.py` file with their values. You can see their imports in `src/app.py`. These tokens can be found on [Slack Apps](https://api.slack.com/apps). You will also need to download the ouath client secret from [Google Developer Console](https://console.cloud.google.com/project), rename it to `credentials.json` and place it at the root of this repository. The first time you run the bot it will have you sign into the Armada Robotics Google account so that it can store the relevant tokens for accessing the Google calendar.
+Doorbell depends on some Slack tokens which should be stored in a `src/secret.py` file with their values. You can see their imports in `src/app.py`. These tokens can be found on [Slack Apps](https://api.slack.com/apps). You will also need to download the ouath client secret from [Google Developer Console](https://console.cloud.google.com/project), rename it to `credentials.json` and place it at the root of this repository. The first time you run Doorbell it will have you sign into the Armada Robotics Google account so that it can store the relevant tokens for accessing the Google calendar.
 
 ### Running
 To run Doorbell normally simply launch `src/app.py`.
@@ -50,3 +50,6 @@ spicetify config extensions doorbell-integration.js
 spicetify apply
 ```
 And you're done! Whenever Spotify is open it will automatically connect to Doorbell and start listening for song requests.
+
+### Tests
+There's various tests to cover the functionality of Doorbell and to run them make sure that the `src/` directory is on your `PYTHONPATH`. The most useful test is `test/app_test.py` which allows you to run Doorbell from the command line and try out your changes without going through Slack.

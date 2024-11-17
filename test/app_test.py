@@ -1,15 +1,13 @@
 """Allows running commands for Doorbell from the command line for easy testing without using Slack."""
 
 import json
-import sys
 from threading import Thread
 
-sys.path.append("src/")
 import app
 
 
 def fake_response(cmd: str) -> dict:
-    """Creates a fake payload for testing the bot."""
+    """Creates a fake payload for testing Doorbell."""
     return {"event": {"channel": "None", "text": f"@Doorbell {cmd}", "user": "U05UFPWSEJH"}}
 
 

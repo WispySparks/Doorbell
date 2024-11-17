@@ -1,6 +1,5 @@
-import sys
+"""Tests the Google Calendar by printing all calendars and their next event."""
 
-sys.path.append("src/")
 from google_calendar import GoogleCalendar
 
 calendar = GoogleCalendar()

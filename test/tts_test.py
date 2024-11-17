@@ -1,6 +1,5 @@
-import sys
+"""Tests the Text to Speech for Windows."""
 
-sys.path.append("src/")
 from time import sleep
 
 from tts import TTS
