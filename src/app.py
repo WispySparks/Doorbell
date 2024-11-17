@@ -198,7 +198,7 @@ def on_client_connection(client: server.ServerConnection) -> None:
         pass
 
 
-if __name__ == "__main__":
+def main() -> None:
     # There's three main threads/processes, the slack thread which handles all the slack event processing,
     # the websocket thread which serves the websocket server to connect to spicetify, and the main thread
     # which just sits here until the slack thread is shutdown, and then shuts down the websocket server.
@@ -217,3 +217,7 @@ if __name__ == "__main__":
         pass
     websocket_server.shutdown()
     print("Exited Doorbell.")
+
+
+if __name__ == "__main__":
+    main()

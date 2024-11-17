@@ -16,7 +16,7 @@ class EventPoller(Thread):
         self.interval_seconds = interval_seconds
         self.stopped = False
 
-    def stop(self):
+    def stop(self) -> None:
         self.stopped = True
 
     def continuously_poll(self) -> None:
