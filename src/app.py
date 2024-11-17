@@ -32,8 +32,8 @@ spicetify_client_connection: Optional[server.ServerConnection] = None
 
 
 #! There's a deadlock somewhere
-@app.event("app_mention")  # TODO docopt?, calendar subscriptions + event poller, could make update work with spicetify
-# and could have a command to delete data for updates to the database structure (has to be done)
+@app.event("app_mention")  # TODO docopt?, calendar subscriptions + event poller
+# and could have a command to delete data for updates to the database structure
 def mention_event(body: dict, say: Say) -> None:
     event = body["event"]
     channel = event["channel"]
@@ -71,12 +71,9 @@ def mention_event(body: dict, say: Say) -> None:
         restart(say)
     elif cmd == "update":
         result = subprocess.run("git pull", capture_output=True, text=True, check=False)
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=False)
+        subprocess.run(["npm.cmd", "run", "build"], check=False, cwd="spicetify-extension/")
+        subprocess.run(["spicetify", "apply"], check=False)
         say(f"{str(result.stdout)} {str(result.stderr)}")
         restart(say)
     elif cmd in ("exit", "stop"):
@@ -103,7 +100,7 @@ def doorbell(say: Say, user: str, args: list[str]) -> None:
             door = ""
         text_to_speech.say(f"{user} is at the door {door}", blocking=True)
     else:
-        say("Sorry, currently the bot isn't supposed to run. Check the schedule? @Doorbell schedule")
+        say("Sorry, currently Doorbell isn't supposed to run. Check the schedule? @Doorbell schedule")
 
 
 def manage_schedule(say: Say, args: list[str]) -> None:
