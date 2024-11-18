@@ -200,10 +200,10 @@ def main() -> None:
     # the websocket thread which serves the websocket server to connect to spicetify, and the main thread
     # which just sits here until the slack thread is shutdown, and then shuts down the websocket server.
     if "-l" in sys.argv:
-        LOG_DIR: Final = "./logs/"
-        Path(LOG_DIR).mkdir(exist_ok=True)
+        log_dir: Final = "./logs/"
+        Path(log_dir).mkdir(exist_ok=True)
         sys.stderr = sys.stdout = open(
-            LOG_DIR + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", encoding="utf-8", buffering=1
+            log_dir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", encoding="utf-8", buffering=1
         )
     database.create()
     slack_socket_handler.connect()
