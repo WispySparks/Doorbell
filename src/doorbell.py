@@ -228,6 +228,8 @@ if __name__ == "__main__":
     # There's three main threads/processes, the slack thread which handles all the slack event processing,
     # the websocket thread which serves the websocket server to connect to spicetify, and the main thread
     # which just sits here until Doorbell is closed.
+    #! I can grab all running threads in the main thread and join all of them once doorbell is closed, then return the
+    #! correct error code depending on doorbell.restarting and then a higher level script takes care of it
     doorbell = Doorbell()
     print("Started Doorbell!")
     try:
