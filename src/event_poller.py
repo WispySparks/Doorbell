@@ -3,17 +3,18 @@ from datetime import datetime, timedelta
 from threading import Thread
 from typing import Optional
 
-import app
 import database
+from doorbell import Doorbell
 from google_calendar import GoogleCalendar
 
 
 class EventPoller(Thread):
 
-    def __init__(self, interval_seconds: int) -> None:
+    def __init__(self, interval_seconds: int, doorbell: Doorbell) -> None:
         super().__init__()
         self._target = self.continuously_poll
         self.interval_seconds = interval_seconds
+        self.doorbell = doorbell
         self.stopped = False
 
     def stop(self) -> None:
@@ -44,7 +45,7 @@ class EventPoller(Thread):
             if event is None:  # Check if a new event has been added
                 last = datetime.fromisoformat(sub.get("lastEvent", current_date.isoformat()))
                 min_date = max(current_date, last)
-                next_event = app.calendar.get_next_event(calendar_name, min_date)
+                next_event = self.doorbell.calendar.get_next_event(calendar_name, min_date)
                 if next_event is not None:
                     sub.update({"nextEvent": self.event_struct(next_event)})
                 continue
@@ -52,13 +53,13 @@ class EventPoller(Thread):
             event_start = datetime.fromisoformat(event.get("start"))
             remind_window_start = event_start - timedelta(hours=remind_time)
             if current_date >= remind_window_start.astimezone():
-                app.app.client.chat_postMessage(
+                self.doorbell.app.client.chat_postMessage(
                     channel=channel_id,
                     text=f"Reminder: {name} - {event_start.strftime(GoogleCalendar.DATE_FORMAT)}",
                 )
                 event_end = datetime.fromisoformat(event.get("end"))
                 min_date = max(current_date, event_end)
-                next_event = app.calendar.get_next_event(calendar_name, min_date)
+                next_event = self.doorbell.calendar.get_next_event(calendar_name, min_date)
                 if next_event is not None:
                     sub.update({"nextEvent": self.event_struct(next_event)})
                 sub.update({"lastEvent": event_end.isoformat()})
