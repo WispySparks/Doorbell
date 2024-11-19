@@ -1,3 +1,5 @@
+"""Contains the class for using text to speech on Windows."""
+
 from concurrent.futures import Future, wait
 from ctypes import WinError
 from time import sleep
@@ -11,6 +13,7 @@ from winrt.windows.storage.streams import IRandomAccessStream
 
 
 class TTS:
+    """Enables the use of text to speech on Windows through the say() method."""
 
     def __init__(self) -> None:
         self.player = MediaPlayer()
