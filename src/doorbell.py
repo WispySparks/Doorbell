@@ -54,7 +54,6 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
         self.closed = False
         self.restarting = False
 
-    #! There's a deadlock somewhere
     @app.event("app_mention")
     def mention_event(self, body: dict, say: Say) -> None:
         event = body["event"]
@@ -97,14 +96,19 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             subprocess.run(["npm.cmd", "run", "build"], check=False, cwd="spicetify-extension/")
             subprocess.run(["spicetify", "backup", "apply"], check=False)
             subprocess.run(["spicetify", "apply"], check=False)
-            say(f"{str(result.stdout)} {str(result.stderr)}")
+            say(f"{result.stdout.strip()} {result.stderr.strip()}")
             self.restart(say)
+        elif cmd == "version":
+            result = subprocess.run("git rev-parse HEAD", capture_output=True, text=True, check=False)
+            say(f"Doorbell is currently on commit {result.stdout.strip()}.")
         elif cmd in ("exit", "stop"):
             say("Stopping.")
             self.close()
         else:
             invalid = "" if cmd == "help" else f"Invalid argument: {cmd}. "
-            say(f"{invalid}Valid arguments are door, schedule, calendars, next, play, restart, update, and exit.")
+            say(
+                f"{invalid}Valid arguments are door, schedule, calendars, next, play, restart, update, version, and exit."
+            )
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         schedule = database.read().schedule
