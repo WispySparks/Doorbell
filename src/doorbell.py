@@ -39,7 +39,6 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
     spicetify_client_connection: Optional[server.ServerConnection] = None
 
     def __init__(self, connect_to_slack: bool = True) -> None:
-
         if "-l" in sys.argv:
             log_dir: Final = "./logs/"
             Path(log_dir).mkdir(exist_ok=True)
@@ -49,13 +48,14 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
         database.create()
         if connect_to_slack:
             self.slack_socket_handler.connect()
-        self.websocket_server = server.serve(self.on_client_connection, "localhost", 8765)
+        self.websocket_server = server.serve(self._on_client_connection, "localhost", 8765)
         Thread(target=self.websocket_server.serve_forever, name="Websocket Server").start()
         self.closed = False
         self.restarting = False
 
     @app.event("app_mention")
     def mention_event(self, body: dict, say: Say) -> None:
+        """The callback function for the Slack mention event, https://api.slack.com/events/app_mention."""
         event = body["event"]
         channel = event["channel"]
         text: str = event["text"]
@@ -111,6 +111,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             )
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
+        """Rings the doorbell and activates text to speech if the schedule allows it."""
         schedule = database.read().schedule
         if not schedule:
             say("Schedule not created yet!")
@@ -129,6 +130,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             say("Sorry, currently Doorbell isn't supposed to run. Check the schedule? @Doorbell schedule")
 
     def manage_schedule(self, say: Say, args: list[str]) -> None:
+        """Either reads the current schedule to the user or accepts a new schedule to write from the user."""
         if len(args) < 2:
             data = database.read()
             if not data.schedule:
@@ -159,6 +161,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             say(f"Wrote schedule.\n{database.read().schedule_to_str()}")
 
     def calendar_subscribe(self, say: Say, channel: str, args: list[str]) -> None:
+        """Subscribes to a google calendar to be reminded of any future events."""
         if len(args) < 2:
             say("Must provide how many hours before to be reminded.")
         elif len(args) < 3:
@@ -184,6 +187,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             say(f"Subscribed to {calendar_name} and reminds {str(remind_time_hours)} hours before.")
 
     def play_song(self, say: Say, args: list[str]) -> None:
+        """Adds a Spotify song to the queue if Spotify is open."""
         if len(args) < 2:
             say("Must give a Spotify track URL.")
             return
@@ -202,20 +206,19 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
         else:
             say(f"Added {song_url} to the queue.", unfurl_links=False, unfurl_media=False)
 
+    def _on_client_connection(self, client: server.ServerConnection) -> None:
+        print("Spicetify has connected!")
+        self.spicetify_client_connection = client
+        while not self.closed:
+            pass
+
     def restart(self, say: Say) -> None:
-        """
-        Sets a flag for consumers that Doorbell should be restarted. All restart logic is
+        """Sets a flag for consumers that Doorbell should be restarted. All restart logic is
         handled externally.
         """
         say("Restarting.")
         self.restarting = True
         self.close()
-
-    def on_client_connection(self, client: server.ServerConnection) -> None:
-        print("Spicetify has connected!")
-        self.spicetify_client_connection = client
-        while not self.closed:
-            pass
 
     def close(self) -> None:
         """Disconnects from Slack and kills all threads pertaining to Doorbell."""
