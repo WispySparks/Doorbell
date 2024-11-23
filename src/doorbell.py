@@ -26,8 +26,7 @@ from tts import TTS
 mixer.init()
 
 
-# and could have a command to delete data for updates to the database structure
-class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscribing
+class Doorbell:  # TODO docopt?, event poller
     """The Doorbell Slack bot. All of the functionality starts in mention_event()."""
 
     app = App(token=BOT_TOKEN)
@@ -91,6 +90,20 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
             say(f"{event.name} - {event.start.strftime(GoogleCalendar.DATE_FORMAT)}")
         elif cmd == "subscribe":
             self.calendar_subscribe(say, channel, case_sensitive_args)
+        elif cmd == "unsubscribe":
+            if len(case_sensitive_args) < 2:
+                say("Must provide a calendar to unsubscribe from.")
+            calendar_name = " ".join(case_sensitive_args[1:])
+            data = database.read()
+            subs = data.subscriptions_for_channel(channel)
+            for sub in subs:
+                if sub.calendar_name == calendar_name:
+                    data.subscriptions.remove(sub)
+                    database.write(data)
+                    say(f"Unsubscribed from {calendar_name}.")
+                    break
+            else:
+                say("No subscription to that calendar.")
         elif cmd == "subscriptions":
             say(database.read().subscriptions_to_str(channel))
         elif cmd == "play":
@@ -114,7 +127,8 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
         else:
             invalid = "" if cmd == "help" else f"Invalid argument: {cmd}. "
             say(
-                f"{invalid}Valid arguments are door, schedule, calendars, next, subscribe, subscriptions, play, restart, update, version, and exit."
+                f"{invalid}Valid arguments are door, schedule, calendars, next, subscribe,"
+                " unsubscribe, subscriptions, play, restart, update, version, and exit."
             )
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
@@ -185,6 +199,11 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
                 return
             next_event = self.calendar.get_next_event(calendar_name)
             data = database.read()
+            subs = data.subscriptions_for_channel(channel)
+            for sub in subs:
+                if sub.calendar_name == calendar_name:
+                    say("Can't subscribe to the same calendar multiple times in the same channel.")
+                    return
             data.subscriptions.append(
                 database.Subscription(channel, calendar_name, remind_time, next_event, dt.datetime.now().astimezone())
             )

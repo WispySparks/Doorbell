@@ -48,16 +48,22 @@ class Data:
             + f" | Su: {self._day_to_str(self.schedule[6])}"
         )
 
-    def subscriptions_to_str(self, channel_id) -> str:
+    def subscriptions_to_str(self, channel_id: str) -> str:
         """Formats the internal subscriptions as a pretty string."""
         if not self.subscriptions:
             return "No subscriptions."
         string = "Subscriptions:\n"
-        for sub in self.subscriptions:
-            if sub.channel_id != channel_id:
-                continue
-            string += f"{sub.calendar_name}: {sub.remind_time.total_seconds() / 3600} hours\n"
+        for sub in self.subscriptions_for_channel(channel_id):
+            name = "None" if sub.next_event is None else sub.next_event.name
+            string += f"{sub.calendar_name}: {sub.remind_time.total_seconds() / 3600} hours, next event is {name}\n"
         return string.strip()
+
+    def subscriptions_for_channel(self, channel_id: str) -> list[Subscription]:
+        subs = []
+        for sub in self.subscriptions:
+            if sub.channel_id == channel_id:
+                subs.append(sub)
+        return subs
 
     def _day_to_str(self, day: Optional[DaySchedule]) -> str:
         time_format = "%I:%M %p"
