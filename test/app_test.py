@@ -1,6 +1,7 @@
 """Allows running commands for Doorbell from the command line without using Slack."""
 
 import json
+import threading
 
 from doorbell import Doorbell
 
@@ -19,4 +20,10 @@ try:
         doorbell.mention_event(fake_response(cmd), print)  # type: ignore
 except KeyboardInterrupt:
     doorbell.close()
+for thread in threading.enumerate():
+    if thread == threading.current_thread() or thread.daemon:
+        continue
+    thread.join()
+if doorbell.restarting:
+    print("Restarting isn't available for Doorbell CLI.")
 print("Exited Doorbell.")

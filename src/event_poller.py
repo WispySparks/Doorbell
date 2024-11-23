@@ -11,7 +11,7 @@ from google_calendar import GoogleCalendar
 class EventPoller(Thread):
 
     def __init__(self, interval_seconds: int, doorbell: Doorbell) -> None:
-        super().__init__()
+        super().__init__(name="Event Poller")
         self._target = self.continuously_poll
         self.interval_seconds = interval_seconds
         self.doorbell = doorbell

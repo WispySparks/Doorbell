@@ -1,11 +1,11 @@
 """Contains the main code for the Doorbell Slack bot. Can be run directly to start Doorbell normally."""
 
-import atexit
 import datetime as dt
 import os
 import re
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from threading import Thread
 from time import sleep
@@ -50,10 +50,9 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
         if connect_to_slack:
             self.slack_socket_handler.connect()
         self.websocket_server = server.serve(self.on_client_connection, "localhost", 8765)
-        Thread(target=self.websocket_server.serve_forever).start()
+        Thread(target=self.websocket_server.serve_forever, name="Websocket Server").start()
         self.closed = False
         self.restarting = False
-        atexit.register(self._onExit)
 
     #! There's a deadlock somewhere
     @app.event("app_mention")
@@ -199,6 +198,10 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             say(f"Added {song_url} to the queue.", unfurl_links=False, unfurl_media=False)
 
     def restart(self, say: Say) -> None:
+        """
+        Sets a flag for consumers that Doorbell should be restarted. All restart logic is
+        handled externally.
+        """
         say("Restarting.")
         self.restarting = True
         self.close()
@@ -215,21 +218,10 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
         self.slack_socket_handler.close()
         self.websocket_server.shutdown()
 
-    def _onExit(self) -> None:
-        """Restarts the entire program when Doorbell is closed if it was set to restart.
-        It's registered to atexit to ensure everything has been cleaned up beforehand."""
-        #! Not implemented yet
-        if self.restarting:
-            exit(7880)
-        exit(0)
-
 
 if __name__ == "__main__":
-    # There's three main threads/processes, the slack thread which handles all the slack event processing,
-    # the websocket thread which serves the websocket server to connect to spicetify, and the main thread
-    # which just sits here until Doorbell is closed.
-    #! I can grab all running threads in the main thread and join all of them once doorbell is closed, then return the
-    #! correct error code depending on doorbell.restarting and then a higher level script takes care of it
+    # The main thread sits here until Doorbell is closed by a command and then joins up with
+    # all the other threads that have been cleaned up by Doorbell#close()
     doorbell = Doorbell()
     print("Started Doorbell!")
     try:
@@ -237,4 +229,10 @@ if __name__ == "__main__":
             pass
     except KeyboardInterrupt:
         doorbell.close()
+    for thread in threading.enumerate():
+        if thread == threading.current_thread() or thread.daemon:
+            continue
+        thread.join()
     print("Exited Doorbell.")
+    if doorbell.restarting:
+        os.execl(sys.executable, f"{sys.executable}", *sys.argv)
