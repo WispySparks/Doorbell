@@ -1,7 +1,6 @@
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from threading import Thread
-from typing import Optional
 
 import database
 from doorbell import Doorbell
@@ -9,58 +8,45 @@ from google_calendar import GoogleCalendar
 
 
 class EventPoller(Thread):
+    """Used to poll any subscriptions and send appropriate reminders."""
 
     def __init__(self, interval_seconds: int, doorbell: Doorbell) -> None:
         super().__init__(name="Event Poller")
-        self._target = self.continuously_poll
+        self._target = self._continuously_poll
         self.interval_seconds = interval_seconds
         self.doorbell = doorbell
         self.stopped = False
 
     def stop(self) -> None:
+        """Stops this thread."""
         self.stopped = True
 
-    def continuously_poll(self) -> None:
+    def _continuously_poll(self) -> None:
         time.sleep(5)
         while not self.stopped:
-            self.poll_subscriptions()
+            self._poll_subscriptions()
             time.sleep(self.interval_seconds)
         print("Stopped Event Poller.")
 
-    def event_struct(self, event: tuple[str, datetime, datetime]) -> Optional[dict]:
-        if event is None:
-            return None
-        name, start_time, end_time = event
-        return {"name": name, "start": start_time.isoformat(), "end": end_time.isoformat()}
-
-    def poll_subscriptions(self) -> None:
+    def _poll_subscriptions(self) -> None:
         subs = database.read().subscriptions
-        sub: dict
         for sub in subs:
             current_date = datetime.now().astimezone()
-            channel_id = sub.get("channelId", "")
-            calendar_name = sub.get("calendarName", "")
-            remind_time = sub.get("remindTime", 0)
-            event = sub.get("nextEvent")
-            if event is None:  # Check if a new event has been added
-                last = datetime.fromisoformat(sub.get("lastEvent", current_date.isoformat()))
-                min_date = max(current_date, last)
-                next_event = self.doorbell.calendar.get_next_event(calendar_name, min_date)
-                if next_event is not None:
-                    sub.update({"nextEvent": self.event_struct(next_event)})
+            if sub.next_event is None:  # Check if a new event has been added
+                min_date = max(current_date, sub.last_event)
+                next_event = self.doorbell.calendar.get_next_event(sub.calendar_name, min_date)
+                sub.next_event = next_event
                 continue
-            name = event.get("name")
-            event_start = datetime.fromisoformat(event.get("start"))
-            remind_window_start = event_start - timedelta(hours=remind_time)
+            name = sub.next_event.name
+            remind_window_start = sub.next_event.start - sub.remind_time
             if current_date >= remind_window_start.astimezone():
                 self.doorbell.app.client.chat_postMessage(
-                    channel=channel_id,
-                    text=f"Reminder: {name} - {event_start.strftime(GoogleCalendar.DATE_FORMAT)}",
+                    channel=sub.channel_id,
+                    text=f"Reminder: {name} - {sub.next_event.start.strftime(GoogleCalendar.DATE_FORMAT)}",
                 )
-                event_end = datetime.fromisoformat(event.get("end"))
+                event_end = sub.next_event.end
                 min_date = max(current_date, event_end)
-                next_event = self.doorbell.calendar.get_next_event(calendar_name, min_date)
-                if next_event is not None:
-                    sub.update({"nextEvent": self.event_struct(next_event)})
-                sub.update({"lastEvent": event_end.isoformat()})
+                next_event = self.doorbell.calendar.get_next_event(sub.calendar_name, min_date)
+                sub.next_event = next_event
+                sub.last_event = event_end
         database.write(database.Data(subscriptions=subs))

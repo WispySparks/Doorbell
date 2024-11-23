@@ -27,7 +27,7 @@ mixer.init()
 
 
 # and could have a command to delete data for updates to the database structure
-class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
+class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscribing
     """The Doorbell Slack bot. All of the functionality starts in mention_event()."""
 
     app = App(token=BOT_TOKEN)
@@ -84,8 +84,11 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             if event is None:
                 say(f"Invalid Calendar - {calendar_name} or no future events.")
                 return
-            name, start, _ = event
-            say(f"{name} - {start.strftime(GoogleCalendar.DATE_FORMAT)}")
+            say(f"{event.name} - {event.start.strftime(GoogleCalendar.DATE_FORMAT)}")
+        elif cmd == "subscribe":
+            self.calendar_subscribe(say, channel, case_sensitive_args)
+        elif cmd == "subscriptions":
+            say(database.read().subscriptions_to_str())
         elif cmd == "play":
             self.play_song(say, case_sensitive_args)
         elif cmd == "restart":
@@ -107,7 +110,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
         else:
             invalid = "" if cmd == "help" else f"Invalid argument: {cmd}. "
             say(
-                f"{invalid}Valid arguments are door, schedule, calendars, next, play, restart, update, version, and exit."
+                f"{invalid}Valid arguments are door, schedule, calendars, next, subscribe, subscriptions, play, restart, update, version, and exit."
             )
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
@@ -167,24 +170,18 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
         elif len(args) < 3:
             say("Must provide a calendar to subscribe to.")
         else:
-            remind_time_hours = float(args[1])
+            remind_time = dt.timedelta(hours=float(args[1]))
             calendar_name = " ".join(args[2:])
             next_event = self.calendar.get_next_event(calendar_name)
             if next_event is None:
                 say(f"Invalid calendar - {calendar_name} or no future events.")
                 return
-            name, start, end = next_event
-            subs: list = database.read().subscriptions
-            subs.append(
-                {
-                    "channelId": channel,
-                    "calendarName": calendar_name,
-                    "remindTime": remind_time_hours,
-                    "nextEvent": {"name": name, "start": start.isoformat(), "end": end.isoformat()},
-                }
+            data = database.read()
+            data.subscriptions.append(
+                database.Subscription(channel, calendar_name, remind_time, next_event, dt.datetime.now().astimezone())
             )
-            database.write(database.Data(subscriptions=subs))
-            say(f"Subscribed to {calendar_name} and reminds {str(remind_time_hours)} hours before.")
+            database.write(data)
+            say(f"Subscribed to {calendar_name} and reminds {str(remind_time.total_seconds() / 3600)} hours before.")
 
     def play_song(self, say: Say, args: list[str]) -> None:
         """Adds a Spotify song to the queue if Spotify is open."""

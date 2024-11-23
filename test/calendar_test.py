@@ -11,5 +11,4 @@ for c in calendar.calendars:
     if event is None:
         print(f"{c}: None")
         continue
-    name, date, _ = event
-    print(f"{c}: {name} - {date.strftime(GoogleCalendar.DATE_FORMAT)}")
+    print(f"{c}: {event.name} - {event.start.strftime(GoogleCalendar.DATE_FORMAT)}")

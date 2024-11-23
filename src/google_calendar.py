@@ -2,13 +2,19 @@
 
 import os.path
 from datetime import datetime
-from typing import Final, Optional
+from typing import Final, NamedTuple, Optional
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+
+
+class CalendarEvent(NamedTuple):
+    name: str
+    start: datetime
+    end: datetime
 
 
 class GoogleCalendar:
@@ -42,10 +48,10 @@ class GoogleCalendar:
         except HttpError as error:
             print(f"GoogleCalendar Error: {error}")
 
-    def get_events(self, calendar: str, min_date: Optional[datetime] = None) -> list[tuple[str, datetime, datetime]]:
+    def get_events(self, calendar: str, min_date: Optional[datetime] = None) -> list[CalendarEvent]:
         """Returns list of events for the given calendar
         in the form of a tuple with the event's name, start date, and end date."""
-        events: list[tuple[str, datetime, datetime]] = []
+        events: list[CalendarEvent] = []
         calendar_id = self.calendars.get(calendar)
         if calendar_id is None:
             return events
@@ -71,12 +77,10 @@ class GoogleCalendar:
             )
             start = datetime.fromisoformat(start)
             end = datetime.fromisoformat(end)
-            events.append((name, start, end))
+            events.append(CalendarEvent(name, start, end))
         return events
 
-    def get_next_event(
-        self, calendar: str, min_date: Optional[datetime] = None
-    ) -> Optional[tuple[str, datetime, datetime]]:
+    def get_next_event(self, calendar: str, min_date: Optional[datetime] = None) -> Optional[CalendarEvent]:
         """Returns a tuple structured with the event's name, event's start date and event's end date
         or None if there is no next event."""
         events = self.get_events(calendar, min_date)
