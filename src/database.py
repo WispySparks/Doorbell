@@ -48,9 +48,16 @@ class Data:
             + f" | Su: {self._day_to_str(self.schedule[6])}"
         )
 
-    def subscriptions_to_str(self) -> str:  # TODO: Implement
+    def subscriptions_to_str(self, channel_id) -> str:
         """Formats the internal subscriptions as a pretty string."""
-        return str(self.subscriptions)
+        if not self.subscriptions:
+            return "No subscriptions."
+        string = "Subscriptions:\n"
+        for sub in self.subscriptions:
+            if sub.channel_id != channel_id:
+                continue
+            string += f"{sub.calendar_name}: {sub.remind_time.total_seconds() / 3600} hours\n"
+        return string.strip()
 
     def _day_to_str(self, day: Optional[DaySchedule]) -> str:
         time_format = "%I:%M %p"
@@ -84,3 +91,14 @@ def delete() -> None:
     with _LOCK:
         if os.path.exists(FILE_PATH):
             os.remove(FILE_PATH)
+
+
+def check_for_corruption() -> None:
+    """Attempts to read the pickle file and if there's an error
+    the old database will be deleted and a new one created."""
+    try:
+        read()
+    except AttributeError:  # Corrupted / Structure changed
+        print("Couldn't read database, recreating...")
+        delete()
+        create()

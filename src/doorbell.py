@@ -46,6 +46,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
                 log_dir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", encoding="utf-8", buffering=1
             )
         database.create()
+        database.check_for_corruption()
         if connect_to_slack:
             self.slack_socket_handler.connect()
         self.websocket_server = server.serve(self._on_client_connection, "localhost", 8765)
@@ -80,15 +81,18 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
                 say("Need to provide a calendar.")
                 return
             calendar_name = " ".join(case_sensitive_args[1:])
+            if calendar_name not in self.calendar.calendars:
+                say(f"Invalid calendar '{calendar_name}'.")
+                return
             event = self.calendar.get_next_event(calendar_name)
             if event is None:
-                say(f"Invalid Calendar - {calendar_name} or no future events.")
+                say(f"{calendar_name} has no future events.")
                 return
             say(f"{event.name} - {event.start.strftime(GoogleCalendar.DATE_FORMAT)}")
         elif cmd == "subscribe":
             self.calendar_subscribe(say, channel, case_sensitive_args)
         elif cmd == "subscriptions":
-            say(database.read().subscriptions_to_str())
+            say(database.read().subscriptions_to_str(channel))
         elif cmd == "play":
             self.play_song(say, case_sensitive_args)
         elif cmd == "restart":
@@ -170,12 +174,16 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
         elif len(args) < 3:
             say("Must provide a calendar to subscribe to.")
         else:
-            remind_time = dt.timedelta(hours=float(args[1]))
-            calendar_name = " ".join(args[2:])
-            next_event = self.calendar.get_next_event(calendar_name)
-            if next_event is None:
-                say(f"Invalid calendar - {calendar_name} or no future events.")
+            try:
+                remind_time = dt.timedelta(hours=float(args[1]))
+            except ValueError:
+                say(f"First argument must be a number of hours. '{args[1]}' could not be converted to a float.")
                 return
+            calendar_name = " ".join(args[2:])
+            if calendar_name not in self.calendar.calendars:
+                say(f"Invalid calendar '{calendar_name}'.")
+                return
+            next_event = self.calendar.get_next_event(calendar_name)
             data = database.read()
             data.subscriptions.append(
                 database.Subscription(channel, calendar_name, remind_time, next_event, dt.datetime.now().astimezone())
@@ -204,7 +212,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
             say(f"Added {song_url} to the queue.", unfurl_links=False, unfurl_media=False)
 
     def _on_client_connection(self, client: server.ServerConnection) -> None:
-        print("Spicetify has connected!")
+        print("\nSpicetify has connected!")
         self.spicetify_client_connection = client
         while not self.closed:
             pass
