@@ -15,20 +15,20 @@ Installing dependencies.
 ```
 pip install -r ./requirements.txt
 ```
-Doorbell depends on some Slack tokens which should be stored in a `src/secret.py` file with their values. You can see their imports in `src/app.py`. These tokens can be found on [Slack Apps](https://api.slack.com/apps). You will also need to download the ouath client secret from [Google Developer Console](https://console.cloud.google.com/project), rename it to `credentials.json` and place it at the root of this repository. The first time you run Doorbell it will have you sign into the Armada Robotics Google account so that it can store the relevant tokens for accessing the Google calendar.
+Doorbell depends on some Slack tokens which should be stored in a `src/secret.py` file with their values. You can see their imports in `src/doorbell.py`. These tokens can be found on [Slack Apps](https://api.slack.com/apps). You will also need to download the ouath client secret from [Google Developer Console](https://console.cloud.google.com/project), rename it to `credentials.json` and place it at the root of this repository. The first time you run Doorbell it will have you sign into the Armada Robotics Google account so that it can store the relevant tokens for accessing the Google calendar.
 
 ### Running
-To run Doorbell normally simply launch `src/app.py`.
+To run Doorbell normally simply launch `src/doorbell.py`.
 ```
-python src/app.py
+python src/doorbell.py
 ```
 If you want to log to a file (if you're running Doorbell silently) then add the `-l` flag.
 ```
-python src/app.py -l
+python src/doorbell.py -l
 ```
 Generally you'll want Doorbell to run automatically when your server/computer starts up. For Windows you can use the Task Scheduler or cron for Unix. Here's a command for creating a Windows Task that starts Doorbell every time the computer turns on.
 ```bat
-schtasks /Create /TN "Doorbell" /TR "\"C:/path/to/.venv/Scripts/pythonw.exe\" \"C:/path/to/Doorbell/src/app.py\" -l" /SC ONSTART /RU yourusername /RP
+schtasks /Create /TN "Doorbell" /TR "\"C:/path/to/.venv/Scripts/pythonw.exe\" \"C:/path/to/Doorbell/src/doorbell.py\" -l" /SC ONSTART /RU yourusername /RP
 ```
 That gets you most of the way there but you should access the task in the GUI and set the task -> properties -> actions -> "start in" to the root of Doorbell (C:/path/to/Doorbell).
 

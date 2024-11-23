@@ -96,7 +96,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             subprocess.run(["npm.cmd", "run", "build"], check=False, cwd="spicetify-extension/")
             subprocess.run(["spicetify", "backup", "apply"], check=False)
             subprocess.run(["spicetify", "apply"], check=False)
-            say(f"{result.stdout.strip()} {result.stderr.strip()}")
+            say(f"{result.stdout.strip()} {result.stderr.strip()}", unfurl_links=False, unfurl_media=False)
             self.restart(say)
         elif cmd == "version":
             result = subprocess.run("git rev-parse HEAD", capture_output=True, text=True, check=False)
