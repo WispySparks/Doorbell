@@ -9,7 +9,7 @@ from doorbell import Doorbell
 
 def fake_response(text: str, channel_id: str) -> dict:
     """Creates a fake payload for testing Doorbell."""
-    return {"event": {"channel": channel_id, "text": f"@Doorbell {text}", "user": "U05UFPWSEJH"}}
+    return {"event": {"channel": channel_id, "text": f"@Doorbell {text}", "user": "U05UFPWSEJH"}}  # user is Doorbell
 
 
 def print_ignore_kwargs(*args, **_):
@@ -22,12 +22,17 @@ def main() -> None:
     doorbell = Doorbell(False)
     print("Started Doorbell!")
     print(json.dumps(doorbell.app.client.auth_test().data, indent=4))
+    channels = doorbell.app.client.conversations_list()["channels"]
     try:
-        channel = "none"
+        channel = "C05U4CM8B8X"  # bot-spam
         while not doorbell.closed:
-            cmd = input("Command: ")
+            cmd = input(f"#{doorbell.get_channel_name(channel)}> ")
             if cmd.startswith("#"):
-                channel = cmd[1:]
+                channel_name = cmd[1:]
+                for c in channels:
+                    if c["name"] == channel_name:
+                        channel = c["id"]
+                        print(f"Switched to channel {channel_name}")
                 continue
             doorbell.mention_event(fake_response(cmd, channel), print_ignore_kwargs)  # type: ignore
     except KeyboardInterrupt:

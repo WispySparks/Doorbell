@@ -106,6 +106,8 @@ class Doorbell:  # TODO docopt?, event poller
                 say("No subscription to that calendar.")
         elif cmd == "subscriptions":
             say(database.read().subscriptions_to_str(channel))
+        elif cmd == "all_subscriptions":
+            say(database.read().all_subscriptions_to_str(self))
         elif cmd == "play":
             self.play_song(say, case_sensitive_args)
         elif cmd == "restart":
@@ -128,7 +130,7 @@ class Doorbell:  # TODO docopt?, event poller
             invalid = "" if cmd == "help" else f"Invalid argument: {cmd}. "
             say(
                 f"{invalid}Valid arguments are door, schedule, calendars, next, subscribe,"
-                " unsubscribe, subscriptions, play, restart, update, version, and exit."
+                " unsubscribe, subscriptions, all_subscriptions, play, restart, update, version, and exit."
             )
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
@@ -235,6 +237,13 @@ class Doorbell:  # TODO docopt?, event poller
         self.spicetify_client_connection = client
         while not self.closed:
             pass
+
+    def get_channel_name(self, channel_id: str) -> str:
+        """Returns the name of Slack channel given its channel id."""
+        result = self.app.client.conversations_info(channel=channel_id)
+        if result["channel"] is not None:
+            return result["channel"].get("name", "None")
+        return "None"
 
     def restart(self, say: Say) -> None:
         """Sets a flag for consumers that Doorbell should be restarted. All restart logic is

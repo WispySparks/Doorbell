@@ -1,14 +1,20 @@
 """Contains the Data struct stored in the database and methods for interacting with the database.
 The database is stored as a pickle file."""
 
+from __future__ import annotations
+
 import os
 import pickle
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from threading import Lock
-from typing import Final, Optional
+from typing import TYPE_CHECKING, Final, Optional
 
 from google_calendar import CalendarEvent
+
+if TYPE_CHECKING:
+    from doorbell import Doorbell
+
 
 _LOCK: Final = Lock()
 FILE_PATH: Final = "data.pickle"
@@ -52,12 +58,25 @@ class Data:
             + f" | Su: {self._day_to_str(self.schedule[6])}"
         )
 
-    def subscriptions_to_str(self, channel_id: str) -> str:
-        """Formats the internal subscriptions as a pretty string."""
+    def all_subscriptions_to_str(self, doorbell: Doorbell) -> str:
+        """Formats all the internal subscriptions as a pretty string."""
         if not self.subscriptions:
             return "No subscriptions."
+        string = "All Subscriptions:\n"
+        channel_ids = set()
+        for sub in self.subscriptions:
+            channel_ids.add(sub.channel_id)
+        for channel_id in channel_ids:
+            string += doorbell.get_channel_name(channel_id) + " " + self.subscriptions_to_str(channel_id) + "\n"
+        return string.strip()
+
+    def subscriptions_to_str(self, channel_id: str) -> str:
+        """Formats the internal subscriptions for a given channel as a pretty string."""
+        subs = self.subscriptions_for_channel(channel_id)
+        if not subs:
+            return "No subscriptions."
         string = "Subscriptions:\n"
-        for sub in self.subscriptions_for_channel(channel_id):
+        for sub in subs:
             name = "None" if sub.next_event is None else sub.next_event.name
             string += f"{sub.calendar_name}: {sub.remind_time.total_seconds() / 3600} hours, next event is {name}\n"
         return string.strip()
