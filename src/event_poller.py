@@ -1,3 +1,5 @@
+"""Contains the Event Poller which polls for any subscriptions and sends reminders."""
+
 import time
 from datetime import datetime
 from threading import Thread

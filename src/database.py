@@ -6,7 +6,7 @@ import pickle
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from threading import Lock
-from typing import Final, NamedTuple, Optional
+from typing import Final, Optional
 
 from google_calendar import CalendarEvent
 
@@ -16,12 +16,16 @@ FILE_PATH: Final = "data.pickle"
 
 @dataclass(frozen=True)
 class DaySchedule:
+    """The schedule for a single day."""
+
     start_time: time
     end_time: time
 
 
 @dataclass
 class Subscription:
+    """A subscription to a google calendar in a channel."""
+
     channel_id: str
     calendar_name: str
     remind_time: timedelta
@@ -59,6 +63,7 @@ class Data:
         return string.strip()
 
     def subscriptions_for_channel(self, channel_id: str) -> list[Subscription]:
+        """Returns all the subscriptions within a given Slack channel."""
         subs = []
         for sub in self.subscriptions:
             if sub.channel_id == channel_id:

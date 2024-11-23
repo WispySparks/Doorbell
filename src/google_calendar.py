@@ -3,7 +3,7 @@
 import os.path
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Final, NamedTuple, Optional
+from typing import Final, Optional
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -14,6 +14,8 @@ from googleapiclient.errors import HttpError
 
 @dataclass(frozen=True)
 class CalendarEvent:
+    """An event on the Google Calendar."""
+
     name: str
     start: datetime
     end: datetime

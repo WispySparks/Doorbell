@@ -31,7 +31,7 @@ class TTS:
             session = self.player.playback_session
             if session is None:
                 return
-            time_waited = 0
+            time_waited: float = 0
             while session.natural_duration.total_seconds() == 0:  # Wait until audio is loaded
                 sleep(0.1)
                 time_waited += 0.1
