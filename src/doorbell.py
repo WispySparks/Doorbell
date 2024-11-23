@@ -146,7 +146,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
                 + " It starts with Monday all the way till Sunday, e.g. 14:10-16:30 - - - - 12:00-13:00 -"
             )
         else:
-            schedule: list[Optional[database.DayTuple]] = []
+            schedule: list[Optional[database.DaySchedule]] = []
             active_times = args[1:]
             for day in range(7):
                 time = active_times[day]
@@ -159,7 +159,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller, unsubscr
                     start, end = time.split("-")
                     start_time = dt.time(int(start.split(":")[0]), int(start.split(":")[1]))
                     end_time = dt.time(int(end.split(":")[0]), int(end.split(":")[1]))
-                    schedule.append(database.DayTuple(start_time, end_time))
+                    schedule.append(database.DaySchedule(start_time, end_time))
             database.write(database.Data(schedule))
             say(f"Wrote schedule.\n{database.read().schedule_to_str()}")
 

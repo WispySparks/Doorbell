@@ -1,6 +1,7 @@
 """Contains the GoogleCalendar class for accessing the team's calendar."""
 
 import os.path
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Final, NamedTuple, Optional
 
@@ -11,7 +12,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 
-class CalendarEvent(NamedTuple):
+@dataclass(frozen=True)
+class CalendarEvent:
     name: str
     start: datetime
     end: datetime

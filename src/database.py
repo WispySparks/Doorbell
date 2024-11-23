@@ -12,7 +12,12 @@ from google_calendar import CalendarEvent
 
 _LOCK: Final = Lock()
 FILE_PATH: Final = "data.pickle"
-DayTuple = NamedTuple("DayTuple", [("start_time", time), ("end_time", time)])
+
+
+@dataclass(frozen=True)
+class DaySchedule:
+    start_time: time
+    end_time: time
 
 
 @dataclass
@@ -28,7 +33,7 @@ class Subscription:
 class Data:
     """The Data object being stored in the database."""
 
-    schedule: list[Optional[DayTuple]] = field(default_factory=list)  # 7 days long, starts at Monday
+    schedule: list[Optional[DaySchedule]] = field(default_factory=list)  # 7 days long, starts at Monday
     subscriptions: list[Subscription] = field(default_factory=list)
 
     def schedule_to_str(self) -> str:
@@ -47,7 +52,7 @@ class Data:
         """Formats the internal subscriptions as a pretty string."""
         return str(self.subscriptions)
 
-    def _day_to_str(self, day: Optional[DayTuple]) -> str:
+    def _day_to_str(self, day: Optional[DaySchedule]) -> str:
         time_format = "%I:%M %p"
         if day is None:
             return "--"
