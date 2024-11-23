@@ -63,7 +63,7 @@ class TTS:
                     future.set_exception(WinError(async_op.error_code.value))
                 elif status == AsyncStatus.CANCELED:
                     future.cancel()
-            except BaseException as e:
+            except Exception as e:
                 future.set_exception(e)
 
         operation.completed = completed

@@ -95,6 +95,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             result = subprocess.run("git pull", capture_output=True, text=True, check=False)
             subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=False)
             subprocess.run(["npm.cmd", "run", "build"], check=False, cwd="spicetify-extension/")
+            subprocess.run(["spicetify", "backup", "apply"], check=False)
             subprocess.run(["spicetify", "apply"], check=False)
             say(f"{str(result.stdout)} {str(result.stderr)}")
             self.restart(say)
@@ -186,7 +187,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
             say("Spotify has not connected to Doorbell.")
             return
         song_url = args[1].replace("<", "").replace(">", "")  # Links in slack are bound by angle brackets
-        if not re.match(r"^https://open/.spotify/.com/", song_url):
+        if not re.match(r"^https://open.spotify.com/", song_url):
             say("Invalid Spotify URL.")
             return
         try:
@@ -221,7 +222,7 @@ class Doorbell:  # TODO docopt?, calendar subscriptions + event poller
 
 if __name__ == "__main__":
     # The main thread sits here until Doorbell is closed by a command and then joins up with
-    # all the other threads that have been cleaned up by Doorbell#close()
+    # all the other threads that have been cleaned up by Doorbell#close(), restarting if needed
     doorbell = Doorbell()
     print("Started Doorbell!")
     try:
