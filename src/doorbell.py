@@ -57,13 +57,13 @@ class Doorbell:  # TODO docopt?, event poller
     def mention_event(self, body: dict, say: Say) -> None:
         """The callback function for the Slack mention event, https://api.slack.com/events/app_mention."""
         event = body["event"]
-        channel = event["channel"]
+        channel_id = event["channel"]
         text: str = event["text"]
         user = event["user"]
         user_name = self.app.client.users_info(user=user)["user"]["real_name"]
         args = text.lower().split()[1:]  # Ignore first word which is the mention
         case_sensitive_args = text.split()[1:]  # Needed for URLs
-        print(f"Channel: {channel}, Args: {args}, User: {user_name}")
+        print(f"Channel: {channel_id}/{self.get_channel_name(channel_id)}, Args: {args}, User: {user_name}")
 
         if len(args) < 1:
             say("Hi! (Must provide a command).")
@@ -89,13 +89,13 @@ class Doorbell:  # TODO docopt?, event poller
                 return
             say(f"{event.name} - {event.start.strftime(GoogleCalendar.DATE_FORMAT)}")
         elif cmd == "subscribe":
-            self.calendar_subscribe(say, channel, case_sensitive_args)
+            self.calendar_subscribe(say, channel_id, case_sensitive_args)
         elif cmd == "unsubscribe":
             if len(case_sensitive_args) < 2:
                 say("Must provide a calendar to unsubscribe from.")
             calendar_name = " ".join(case_sensitive_args[1:])
             data = database.read()
-            subs = data.subscriptions_for_channel(channel)
+            subs = data.subscriptions_for_channel(channel_id)
             for sub in subs:
                 if sub.calendar_name == calendar_name:
                     data.subscriptions.remove(sub)
@@ -105,7 +105,7 @@ class Doorbell:  # TODO docopt?, event poller
             else:
                 say("No subscription to that calendar.")
         elif cmd == "subscriptions":
-            say(database.read().subscriptions_to_str(channel))
+            say(database.read().subscriptions_to_str(channel_id))
         elif cmd == "all_subscriptions":
             say(database.read().all_subscriptions_to_str(self))
         elif cmd == "play":
