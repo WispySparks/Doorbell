@@ -48,6 +48,8 @@ class Data:
 
     def schedule_to_str(self) -> str:
         """Formats the internal schedule as a pretty string."""
+        if not self.schedule:
+            return "No schedule."
         return (
             f"Mo: {self._day_to_str(self.schedule[0])}"
             + f" | Tu: {self._day_to_str(self.schedule[1])}"

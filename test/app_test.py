@@ -27,7 +27,7 @@ def main() -> None:
         channel = "C05U4CM8B8X"  # bot-spam
         while not doorbell.closed:
             cmd = input(f"#{doorbell.get_channel_name(channel)}> ")
-            if cmd.startswith("#"):
+            if cmd.startswith("#"):  # Switching channels
                 channel_name = cmd[1:]
                 for c in channels:
                     if c["name"] == channel_name:
