@@ -25,7 +25,7 @@ from tts import TTS
 mixer.init()
 
 
-class Doorbell:  # TODO docopt?
+class Doorbell:
     """The Doorbell Slack bot. All of the functionality starts in mention_event()."""
 
     app = App(token=BOT_TOKEN)
