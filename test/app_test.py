@@ -3,8 +3,17 @@ A command prefixed with # switches into that channel e.g. '#blueberry'."""
 
 import json
 import threading
+from typing import override
 
 from doorbell import Doorbell
+
+
+class TestDoorbell(Doorbell):
+    """Overrides any methods that would go to Slack ensuring that everything remains on the command line."""
+
+    @override
+    def post_message(self, channel_id: str, message: str) -> None:
+        print(f"\n#{self.get_channel_name(channel_id)}> {message}")
 
 
 def fake_response(text: str, channel_id: str) -> dict:
@@ -19,7 +28,7 @@ def print_ignore_kwargs(*args, **_):
 
 def main() -> None:
     """Runs the Doorbell CLI."""
-    doorbell = Doorbell(False)
+    doorbell = TestDoorbell(False)
     print("Started Doorbell!")
     print(json.dumps(doorbell.app.client.auth_test().data, indent=4))
     channels = doorbell.app.client.conversations_list()["channels"]

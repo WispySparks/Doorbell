@@ -19,6 +19,7 @@ from websockets.exceptions import ConnectionClosed
 from websockets.sync import server
 
 import database
+from event_poller import EventPoller
 from google_calendar import GoogleCalendar
 from secret import APP_TOKEN, BOT_TOKEN, SOUND_PATH
 from tts import TTS
@@ -26,7 +27,7 @@ from tts import TTS
 mixer.init()
 
 
-class Doorbell:  # TODO docopt?, event poller
+class Doorbell:  # TODO docopt?
     """The Doorbell Slack bot. All of the functionality starts in mention_event()."""
 
     app = App(token=BOT_TOKEN)
@@ -48,6 +49,8 @@ class Doorbell:  # TODO docopt?, event poller
         database.check_for_corruption()
         if connect_to_slack:
             self.slack_socket_handler.connect()
+        self.event_poller = EventPoller(5, self)
+        self.event_poller.start()
         self.websocket_server = server.serve(self._on_client_connection, "localhost", 8765)
         Thread(target=self.websocket_server.serve_forever, name="Websocket Server").start()
         self.closed = False
@@ -66,7 +69,7 @@ class Doorbell:  # TODO docopt?, event poller
         print(f"Channel: {channel_id}/{self.get_channel_name(channel_id)}, Args: {args}, User: {user_name}")
 
         if len(args) < 1:
-            say("Hi! (Must provide a command).")
+            say("Hi! (Try using 'help' to get a list of commands).")
             return
         cmd = args[0]
         if cmd in self.DOORBELL_WORDS:
@@ -245,6 +248,10 @@ class Doorbell:  # TODO docopt?, event poller
             return result["channel"].get("name", "None")
         return "None"
 
+    def post_message(self, channel_id: str, message: str) -> None:
+        """Posts a message to the specified Slack channel."""
+        self.app.client.chat_postMessage(channel=channel_id, text=message, unfurl_links=False, unfurl_media=False)
+
     def restart(self, say: Say) -> None:
         """Sets a flag for consumers that Doorbell should be restarted. All restart logic is
         handled externally.
@@ -258,6 +265,7 @@ class Doorbell:  # TODO docopt?, event poller
         self.closed = True
         self.slack_socket_handler.close()
         self.websocket_server.shutdown()
+        self.event_poller.stop()
 
 
 if __name__ == "__main__":

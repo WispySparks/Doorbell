@@ -80,7 +80,9 @@ class Data:
         string = "Subscriptions:\n"
         for sub in subs:
             name = "None" if sub.next_event is None else sub.next_event.name
-            string += f"{sub.calendar_name}: {sub.remind_time.total_seconds() / 3600} hours, next event is {name}\n"
+            string += (
+                f"{sub.calendar_name}: {sub.remind_time.total_seconds() / 3600} hours, next reminder is for {name}\n"
+            )
         return string.strip()
 
     def subscriptions_for_channel(self, channel_id: str) -> list[Subscription]:
