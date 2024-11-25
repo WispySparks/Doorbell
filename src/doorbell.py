@@ -1,11 +1,10 @@
-"""Contains the main code for the Doorbell Slack bot. Can be run directly to start Doorbell normally."""
+"""Contains the main code for the Doorbell Slack bot."""
 
 import datetime as dt
 import os
 import re
 import subprocess
 import sys
-import threading
 from pathlib import Path
 from threading import Thread
 from time import sleep
@@ -266,22 +265,3 @@ class Doorbell:  # TODO docopt?
         self.slack_socket_handler.close()
         self.websocket_server.shutdown()
         self.event_poller.stop()
-
-
-if __name__ == "__main__":
-    # The main thread sits here until Doorbell is closed by a command and then joins up with
-    # all the other threads that have been cleaned up by Doorbell#close(), restarting if needed
-    doorbell = Doorbell()
-    print("Started Doorbell!")
-    try:
-        while not doorbell.closed:
-            pass
-    except KeyboardInterrupt:
-        doorbell.close()
-    for thread in threading.enumerate():
-        if thread == threading.current_thread() or thread.daemon:
-            continue
-        thread.join()
-    print("Exited Doorbell.")
-    if doorbell.restarting:
-        os.execl(sys.executable, f"{sys.executable}", *sys.argv)

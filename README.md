@@ -15,20 +15,20 @@ Installing dependencies.
 ```
 pip install -r ./requirements.txt
 ```
-Doorbell depends on some Slack tokens which should be stored in a `src/secret.py` file with their values. You can see their imports in `src/doorbell.py`. These tokens can be found on [Slack Apps](https://api.slack.com/apps). You will also need to download the ouath client secret from [Google Developer Console](https://console.cloud.google.com/project), rename it to `credentials.json` and place it at the root of this repository. The first time you run Doorbell it will have you sign into the Armada Robotics Google account so that it can store the relevant tokens for accessing the Google calendar.
+Doorbell depends on some Slack tokens which should be stored in a `src/secret.py` file with their values. You can see their imports in `src/main.py`. These tokens can be found on [Slack Apps](https://api.slack.com/apps). You will also need to download the ouath client secret from [Google Developer Console](https://console.cloud.google.com/project), rename it to `credentials.json` and place it at the root of this repository. The first time you run Doorbell it will have you sign into the Armada Robotics Google account so that it can store the relevant tokens for accessing the Google calendar.
 
 ### Running
-To run Doorbell normally simply launch `src/doorbell.py`.
+To run Doorbell normally simply launch `src/main.py`.
 ```
-python src/doorbell.py
+python src/main.py
 ```
 If you want to log to a file (if you're running Doorbell silently) then add the `-l` flag.
 ```
-python src/doorbell.py -l
+python src/main.py -l
 ```
 Generally you'll want Doorbell to run automatically when your server/computer starts up. For Windows you can use the Task Scheduler or cron for Unix. Here's a command for creating a Windows Task that starts Doorbell every time the computer turns on.
 ```bat
-schtasks /Create /TN "Doorbell" /TR "\"C:/path/to/.venv/Scripts/pythonw.exe\" \"C:/path/to/Doorbell/src/doorbell.py\" -l" /SC ONSTART /RU yourusername /RP
+schtasks /Create /TN "Doorbell" /TR "\"C:/path/to/.venv/Scripts/pythonw.exe\" \"C:/path/to/Doorbell/src/main.py\" -l" /SC ONSTART /RU yourusername /RP
 ```
 That gets you most of the way there but you should access the task in the GUI and set the task -> properties -> actions -> "start in" to the root of Doorbell (C:/path/to/Doorbell).
 
@@ -52,4 +52,4 @@ spicetify apply
 And you're done! Whenever Spotify is open it will automatically connect to Doorbell and start listening for song requests.
 
 ### Tests
-There's various tests to cover the functionality of Doorbell and to run them make sure that the `src/` directory is on your `PYTHONPATH`. The most useful test is `test/app_test.py` which allows you to run Doorbell from the command line and try out your changes without going through Slack.
+There's various tests to cover the functionality of Doorbell and to run them make sure that the `src/` directory is on your `PYTHONPATH`. The most useful test is `test/doorbell_test.py` which allows you to run Doorbell from the command line and try out your changes without going through Slack.
