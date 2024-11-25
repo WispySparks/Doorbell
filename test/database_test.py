@@ -1,9 +1,10 @@
 """Tests that the database can be created, read, and written to."""
 
-import database
-from doorbell import Doorbell
+from doorbell_test import MockDoorbell
 
-d = Doorbell(False)
+import database
+
+d = MockDoorbell()
 database.create()
 data = database.read()
 print(data.schedule_to_str())

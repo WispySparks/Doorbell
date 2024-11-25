@@ -1,7 +1,6 @@
 """Contains the main code for the Doorbell Slack bot."""
 
 import datetime as dt
-import os
 import re
 import subprocess
 import sys
@@ -37,7 +36,7 @@ class Doorbell:  # TODO docopt?
     text_to_speech = TTS()
     spicetify_client_connection: Optional[server.ServerConnection] = None
 
-    def __init__(self, connect_to_slack: bool = True) -> None:
+    def __init__(self) -> None:
         if "-l" in sys.argv:
             log_dir: Final = "./logs/"
             Path(log_dir).mkdir(exist_ok=True)
@@ -46,8 +45,7 @@ class Doorbell:  # TODO docopt?
             )
         database.create()
         database.check_for_corruption()
-        if connect_to_slack:
-            self.slack_socket_handler.connect()
+        self._connect_to_slack()
         self.event_poller = EventPoller(5, self)
         self.event_poller.start()
         self.websocket_server = server.serve(self._on_client_connection, "localhost", 8765)
@@ -239,6 +237,9 @@ class Doorbell:  # TODO docopt?
         self.spicetify_client_connection = client
         while not self.closed:
             pass
+
+    def _connect_to_slack(self) -> None:
+        self.slack_socket_handler.connect()
 
     def get_channel_name(self, channel_id: str) -> str:
         """Returns the name of Slack channel given its channel id."""

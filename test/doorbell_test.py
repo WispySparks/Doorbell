@@ -8,8 +8,12 @@ from typing import override
 from doorbell import Doorbell
 
 
-class TestDoorbell(Doorbell):
+class MockDoorbell(Doorbell):
     """Overrides any methods that would go to Slack ensuring that everything remains on the command line."""
+
+    @override
+    def _connect_to_slack(self) -> None:
+        pass
 
     @override
     def post_message(self, channel_id: str, message: str) -> None:
@@ -21,14 +25,14 @@ def fake_response(text: str, channel_id: str) -> dict:
     return {"event": {"channel": channel_id, "text": f"@Doorbell {text}", "user": "U05UFPWSEJH"}}  # user is Doorbell
 
 
-def print_ignore_kwargs(*args, **_):
+def print_ignore_kwargs(*args, **_) -> None:
     """Use the print function while ignoring any keyword arguments."""
     print(*args)
 
 
 def main() -> None:
     """Runs the Doorbell CLI."""
-    doorbell = TestDoorbell(False)
+    doorbell = MockDoorbell()
     print("Started Doorbell!")
     print(json.dumps(doorbell.app.client.auth_test().data, indent=4))
     channels = doorbell.app.client.conversations_list()["channels"]
@@ -45,6 +49,7 @@ def main() -> None:
                 continue
             doorbell.mention_event(fake_response(cmd, channel), print_ignore_kwargs)  # type: ignore
     except KeyboardInterrupt:
+        print("KeyboardInterrupt detected.")
         doorbell.close()
     for thread in threading.enumerate():
         if thread == threading.current_thread() or thread.daemon:
