@@ -43,6 +43,7 @@ class Doorbell:
             sys.stderr = sys.stdout = open(
                 log_dir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", encoding="utf-8", buffering=1
             )
+        self.app.event("app_mention")(self.mention_event)
         database.create()
         database.check_for_corruption()
         self._connect_to_slack()
@@ -53,7 +54,6 @@ class Doorbell:
         self.closed = False
         self.restarting = False
 
-    @app.event("app_mention")
     def mention_event(self, body: dict, say: Say) -> None:
         """The callback function for the Slack mention event, https://api.slack.com/events/app_mention."""
         event = body["event"]
