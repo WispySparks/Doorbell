@@ -127,6 +127,15 @@ def delete() -> None:
             os.remove(FILE_PATH)
 
 
+def get_copy() -> bytearray:
+    """Returns a bytearray with a copy of the database's (pickle file) contents."""
+    with _LOCK:
+        buffer = bytearray(os.path.getsize(FILE_PATH))
+        with open(FILE_PATH, "rb") as f:
+            f.readinto1(buffer)
+        return buffer
+
+
 def check_for_corruption() -> None:
     """Attempts to read the pickle file and if there's an error
     the old database will be deleted and a new one created."""

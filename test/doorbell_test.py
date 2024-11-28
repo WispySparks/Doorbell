@@ -3,6 +3,7 @@ A command prefixed with # switches into that channel e.g. '#blueberry'."""
 
 import json
 import threading
+from random import randint
 from typing import override
 
 from doorbell import Doorbell
@@ -18,6 +19,12 @@ class MockDoorbell(Doorbell):
     @override
     def post_message(self, channel_id: str, message: str) -> None:
         print(f"\n#{self.get_channel_name(channel_id)}> {message}")
+
+    @override
+    def upload_file(self, channel_id: str, file: bytes, name: str) -> None:
+        print(f"\n#{self.get_channel_name(channel_id)}> Uploading {name}.")
+        with open(name + "_upload_" + str(randint(1, 2**32)), "xb") as f:
+            f.write(file)
 
 
 def fake_response(text: str, channel_id: str) -> dict:

@@ -120,6 +120,8 @@ class Doorbell:
             subprocess.run(["spicetify", "apply"], check=False)
             say(f"{result.stdout.strip()} {result.stderr.strip()}", unfurl_links=False, unfurl_media=False)
             self.restart(say)
+        elif cmd == "backup":
+            self.upload_file(channel_id, database.get_copy(), database.FILE_PATH)
         elif cmd == "version":
             result = subprocess.run("git rev-parse HEAD", capture_output=True, text=True, check=False)
             say(f"Doorbell is currently on commit {result.stdout.strip()}.")
@@ -130,7 +132,7 @@ class Doorbell:
             invalid = "" if cmd == "help" else f"Invalid argument: {cmd}. "
             say(
                 f"{invalid}Valid arguments are door, schedule, calendars, next, subscribe,"
-                " unsubscribe, subscriptions, all_subscriptions, play, restart, update, version, and exit."
+                " unsubscribe, subscriptions, all_subscriptions, play, restart, update, backup, version, and exit."
             )
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
@@ -251,6 +253,10 @@ class Doorbell:
     def post_message(self, channel_id: str, message: str) -> None:
         """Posts a message to the specified Slack channel."""
         self.app.client.chat_postMessage(channel=channel_id, text=message, unfurl_links=False, unfurl_media=False)
+
+    def upload_file(self, channel_id: str, file: bytes, name: str) -> None:
+        """Uploads a file to the specified Slack channel."""
+        self.app.client.files_upload_v2(channel=channel_id, file=file, filename=name)
 
     def restart(self, say: Say) -> None:
         """Sets a flag for consumers that Doorbell should be restarted. All restart logic is
