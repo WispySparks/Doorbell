@@ -113,6 +113,7 @@ class Doorbell:
         elif cmd == "restart":
             self.restart(say)
         elif cmd == "update":
+            say("Updating.")
             result = subprocess.run("git pull", capture_output=True, text=True, check=False)
             subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=False)
             subprocess.run(["npm.cmd", "run", "build"], check=False, cwd="spicetify-extension/")
