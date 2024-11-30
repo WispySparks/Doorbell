@@ -121,7 +121,8 @@ class Doorbell:
             say(f"{result.stdout.strip()} {result.stderr.strip()}", unfurl_links=False, unfurl_media=False)
             self.restart(say)
         elif cmd == "backup":
-            self.upload_file(channel_id, database.get_copy(), database.FILE_PATH)
+            say("Here ya go boss.")
+            self.upload_file(channel_id, bytes(database.get_copy()), database.FILE_PATH)
         elif cmd == "version":
             result = subprocess.run("git rev-parse HEAD", capture_output=True, text=True, check=False)
             say(f"Doorbell is currently on commit {result.stdout.strip()}.")
