@@ -50,7 +50,7 @@ class EventPoller(Thread):
                     message=f"Reminder: {name} - {sub.next_event.start.strftime(GoogleCalendar.DATE_FORMAT)}",
                 )
                 event_end = sub.next_event.end
-                min_date = max(current_date, event_end)
+                min_date = max(current_date, event_end)  #! ERROR - offset-naive and offset-aware datetimes
                 next_event = self.doorbell.calendar.get_next_event(sub.calendar_name, min_date)
                 sub.next_event = next_event
                 sub.last_event = event_end

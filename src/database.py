@@ -39,12 +39,14 @@ class Subscription:
     last_event: datetime
 
 
-@dataclass(frozen=True)
+@dataclass()
 class Data:
-    """The Data object being stored in the database."""
+    """The Data object being stored in the database.
+    This class used to be frozen which is why some code makes new instances."""
 
     schedule: list[Optional[DaySchedule]] = field(default_factory=list)  # 7 days long, starts at Monday
     subscriptions: list[Subscription] = field(default_factory=list)
+    roles: dict[str, set[str]] = field(default_factory=dict)
 
     def schedule_to_str(self) -> str:
         """Formats the internal schedule as a pretty string."""
@@ -93,6 +95,30 @@ class Data:
                 subs.append(sub)
         return subs
 
+    def add_role(self, role: str, *users: str):
+        if role not in self.roles:
+            self.roles[role] = set()
+        for user in users:
+            self.roles[role].add(user)
+
+    def remove_role(self, role: str, *users: str):
+        for user in users:
+            if user in self.roles[role]:
+                self.roles[role].remove(user)
+        if not self.roles[role]:
+            self.roles.pop(role)
+
+    def get_roles(self) -> list[str]:
+        return list(self.roles.keys())
+
+    def get_roles_for_user(self, user: str) -> list[str]:
+        user_roles = []
+        for role, users in self.roles.items():
+            if user in users:
+                user_roles.append(role)
+                continue
+        return user_roles
+
     def _day_to_str(self, day: Optional[DaySchedule]) -> str:
         time_format = "%I:%M %p"
         if day is None:
@@ -140,7 +166,9 @@ def check_for_corruption() -> None:
     """Attempts to read the pickle file and if there's an error
     the old database will be deleted and a new one created."""
     try:
-        read()
+        data = read()
+        if vars(data).keys() != vars(Data()).keys():
+            raise AttributeError()
     except AttributeError:  # Corrupted / Structure changed
         print("Couldn't read database, recreating...")
         delete()

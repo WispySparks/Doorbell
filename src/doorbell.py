@@ -25,7 +25,7 @@ from tts import TTS
 mixer.init()
 
 
-class Doorbell:
+class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user id
     """The Doorbell Slack bot. All of the functionality starts in mention_event()."""
 
     app = App(token=BOT_TOKEN)
@@ -44,6 +44,7 @@ class Doorbell:
                 log_dir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", encoding="utf-8", buffering=1
             )
         self.app.event("app_mention")(self.mention_event)
+        self.app.event("message")(self.message_event)
         database.create()
         database.check_for_corruption()
         self._connect_to_slack()
@@ -75,6 +76,8 @@ class Doorbell:
             self.manage_schedule(say, args)
         elif cmd == "calendars":
             say("Calendars: " + ", ".join(list(self.calendar.calendars)))
+        elif cmd == "roles":
+            self.manage_roles(say, args)
         elif cmd == "next":
             if len(case_sensitive_args) < 2:
                 say("Need to provide a calendar.")
@@ -133,9 +136,20 @@ class Doorbell:
         else:
             invalid = "" if cmd == "help" else f"Invalid argument: {cmd}. "
             say(
-                f"{invalid}Valid arguments are door, schedule, calendars, next, subscribe,"
+                f"{invalid}Valid arguments are door, schedule, roles, calendars, next, subscribe,"
                 " unsubscribe, subscriptions, all_subscriptions, play, restart, update, backup, version, and exit."
             )
+
+    def message_event(self, body: dict) -> None:
+        event = body["event"]
+        text: str = event["text"]
+        data = database.read()
+
+        data.get_roles()
+        users = data.roles[""]
+
+        for user in users:
+            self.post_message(user, text)
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         """Rings the doorbell and activates text to speech if the schedule allows it."""
@@ -186,6 +200,45 @@ class Doorbell:
                     schedule.append(database.DaySchedule(start_time, end_time))
             database.write(database.Data(schedule))
             say(f"Wrote schedule.\n{database.read().schedule_to_str()}")
+
+    def manage_roles(self, say: Say, args: list[str]):
+        help_message = "Command must be either add [role] [users], remove [role] [users], or list [user]."
+        if len(args) < 2:
+            say(help_message)
+            return
+        action = args[1]
+        data = database.read()
+        if action == "add":
+            if len(args) < 4:
+                say("Must provide a role and space separated list of names.")
+                return
+            data.add_role(args[2], *args[3:])
+        elif action == "remove":
+            if len(args) < 4:
+                say("Must provide a role and space separated list of names.")
+                return
+            roles = data.get_roles()
+            role = args[2]
+            if role not in roles:
+                say(f"{role} is not a role!")
+                return
+            data.remove_role(role, *args[3:])
+        elif action == "list":
+            if len(args) < 3:
+                roles = data.get_roles()
+                if roles:
+                    say("Roles: " + ", ".join(roles))
+                else:
+                    say("No roles.")
+            else:
+                roles = data.get_roles_for_user(args[2])
+                if roles:
+                    say("Roles: " + ", ".join(roles))
+                else:
+                    say(f"{args[2]} has no roles.")
+        else:
+            say(help_message)
+        database.write(data)
 
     def calendar_subscribe(self, say: Say, channel: str, args: list[str]) -> None:
         """Subscribes to a google calendar to be reminded of any future events."""
