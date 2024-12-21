@@ -39,10 +39,9 @@ class Subscription:
     last_event: datetime
 
 
-@dataclass()
+@dataclass
 class Data:
-    """The Data object being stored in the database.
-    This class used to be frozen which is why some code makes new instances."""
+    """The Data object being stored in the database."""
 
     schedule: list[Optional[DaySchedule]] = field(default_factory=list)  # 7 days long, starts at Monday
     subscriptions: list[Subscription] = field(default_factory=list)

@@ -25,7 +25,7 @@ from tts import TTS
 mixer.init()
 
 
-class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user id
+class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user id, modals
     """The Doorbell Slack bot. All of the functionality starts in mention_event()."""
 
     app = App(token=BOT_TOKEN)
@@ -143,13 +143,13 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
     def message_event(self, body: dict) -> None:
         event = body["event"]
         text: str = event["text"]
-        data = database.read()
+        # data = database.read()
 
-        data.get_roles()
-        users = data.roles[""]
+        # data.get_roles()
+        # users = data.roles[""]
 
-        for user in users:
-            self.post_message(user, text)
+        # for user in users:
+        #     self.post_message(user, text)
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         """Rings the doorbell and activates text to speech if the schedule allows it."""
@@ -172,8 +172,8 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
 
     def manage_schedule(self, say: Say, args: list[str]) -> None:
         """Either reads the current schedule to the user or accepts a new schedule to write from the user."""
+        data = database.read()
         if len(args) < 2:
-            data = database.read()
             if not data.schedule:
                 say("Schedule not created yet!")
             else:
@@ -184,12 +184,12 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
                 + " It starts with Monday all the way till Sunday, e.g. 14:10-16:30 - - - - 12:00-13:00 -"
             )
         else:
-            schedule: list[Optional[database.DaySchedule]] = []
+            new_schedule: list[Optional[database.DaySchedule]] = []
             active_times = args[1:]
             for day in range(7):
                 time = active_times[day]
                 if time == "-":
-                    schedule.append(None)
+                    new_schedule.append(None)
                 elif re.match("^([0-1][0-9]|[2][0-3]):[0-5][0-9]-([0-1][0-9]|[2][0-3]):[0-5][0-9]$", time) is None:
                     say("Invalid time format. Should be XX:XX-XX:XX in 24 hour time.")
                     return
@@ -197,8 +197,9 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
                     start, end = time.split("-")
                     start_time = dt.time(int(start.split(":")[0]), int(start.split(":")[1]))
                     end_time = dt.time(int(end.split(":")[0]), int(end.split(":")[1]))
-                    schedule.append(database.DaySchedule(start_time, end_time))
-            database.write(database.Data(schedule))
+                    new_schedule.append(database.DaySchedule(start_time, end_time))
+            data.schedule = new_schedule
+            database.write(data)
             say(f"Wrote schedule.\n{database.read().schedule_to_str()}")
 
     def manage_roles(self, say: Say, args: list[str]):
@@ -264,7 +265,9 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
                     say("Can't subscribe to the same calendar multiple times in the same channel.")
                     return
             data.subscriptions.append(
-                database.Subscription(channel, calendar_name, remind_time, next_event, dt.datetime.now().astimezone())
+                database.Subscription(
+                    channel, calendar_name, remind_time, next_event, dt.datetime.now().astimezone(dt.timezone.utc)
+                )
             )
             database.write(data)
             say(f"Subscribed to {calendar_name} and reminds {str(remind_time.total_seconds() / 3600)} hours before.")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import time
 from datetime import datetime
 from threading import Thread
@@ -36,7 +37,7 @@ class EventPoller(Thread):
     def _poll_subscriptions(self) -> None:
         data = database.read()
         for sub in data.subscriptions:
-            current_date = datetime.now().astimezone()
+            current_date = datetime.now().astimezone(dt.timezone.utc)
             if sub.next_event is None:  # Check if a new event has been added
                 min_date = max(current_date, sub.last_event)
                 next_event = self.doorbell.calendar.get_next_event(sub.calendar_name, min_date)
@@ -44,13 +45,13 @@ class EventPoller(Thread):
                 continue
             name = sub.next_event.name
             remind_window_start = sub.next_event.start - sub.remind_time
-            if current_date >= remind_window_start.astimezone():
+            if current_date >= remind_window_start.astimezone(dt.timezone.utc):
                 self.doorbell.post_message(
                     channel_id=sub.channel_id,
                     message=f"Reminder: {name} - {sub.next_event.start.strftime(GoogleCalendar.DATE_FORMAT)}",
                 )
                 event_end = sub.next_event.end
-                min_date = max(current_date, event_end)  #! ERROR - offset-naive and offset-aware datetimes
+                min_date = max(current_date, event_end)
                 next_event = self.doorbell.calendar.get_next_event(sub.calendar_name, min_date)
                 sub.next_event = next_event
                 sub.last_event = event_end
