@@ -28,7 +28,7 @@ from tts import TTS
 mixer.init()
 
 
-class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user id, modals
+class Doorbell:  # TODO: Scuffed usergroups, modals
     """The Doorbell Slack bot. All of the functionality starts in mention_event()."""
 
     app = App(token=BOT_TOKEN)
@@ -170,7 +170,6 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
                 "type": "modal",
                 "callback_id": "roles_view",
                 "title": block_kit.create_plain_text("Roles"),
-                "submit": block_kit.create_plain_text("Save"),
                 "blocks": [block_kit.create_user_select("roles_user_select")],
             },
         )
@@ -196,7 +195,9 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
                 "submit": block_kit.create_plain_text("Save"),
                 "blocks": [
                     block_kit.create_user_select("roles_user_select", user),
-                    block_kit.create_multi_static_select("Roles", options, user_roles, "roles_role_select"),
+                    block_kit.create_multi_static_select(
+                        "Roles", options, user_roles, "roles_role_select", f"{user}_select"
+                    ),
                 ],
             },
         )
@@ -204,9 +205,10 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
 
     def roles_submit(self, ack: Ack, view: dict):
         ack()
+        # https://api.slack.com/surfaces/modals#updating_response
         state = view["state"]["values"]
         user = state["roles_user_select"]["roles_user_select"]["selected_user"]
-        selected = state["roles_role_select"]["roles_role_select"]["selected_options"]
+        selected = state[f"{user}_select"]["roles_role_select"]["selected_options"]
         roles = {role["value"] for role in selected}
         data = database.read()
         data.set_roles(user, roles)
