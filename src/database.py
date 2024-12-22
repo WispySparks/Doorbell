@@ -45,7 +45,7 @@ class Data:
 
     schedule: list[Optional[DaySchedule]] = field(default_factory=list)  # 7 days long, starts at Monday
     subscriptions: list[Subscription] = field(default_factory=list)
-    roles: dict[str, set[str]] = field(default_factory=dict)
+    roles: dict[str, set[str]] = field(default_factory=dict)  # User: Roles
 
     def schedule_to_str(self) -> str:
         """Formats the internal schedule as a pretty string."""
@@ -94,32 +94,28 @@ class Data:
                 subs.append(sub)
         return subs
 
-    def add_role(self, role: str, *users: str):
-        if role not in self.roles:
-            self.roles[role] = set()
-        for user in users:
-            self.roles[role].add(user)
-
-    def remove_role(self, role: str, *users: str):
-        for user in users:
-            if user in self.roles[role]:
-                self.roles[role].remove(user)
-        if not self.roles[role]:
-            self.roles.pop(role)
-
-    def get_roles(self) -> list[str]:
-        return list(self.roles.keys())
+    def set_roles(self, user: str, roles: set[str]):
+        if user not in self.roles:
+            self.roles[user] = set()
+        self.roles[user] = roles
 
     def get_roles_for_user(self, user: str) -> list[str]:
-        user_roles = []
-        for role, users in self.roles.items():
-            if user in users:
-                user_roles.append(role)
-                continue
-        return user_roles
+        if user not in self.roles:
+            return []
+        return list(self.roles[user])
+
+    def get_roles(self) -> set[str]:
+        roles = set()
+        for user_roles in self.roles.values():
+            roles |= user_roles
+        return roles
 
     def get_users_for_role(self, role: str) -> set[str]:
-        return self.roles[role]
+        users = set()
+        for user, roles in self.roles.items():
+            if role in roles:
+                users.add(user)
+        return users
 
     def _day_to_str(self, day: Optional[DaySchedule]) -> str:
         time_format = "%I:%M %p"

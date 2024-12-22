@@ -50,6 +50,7 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
         self.app.event("message")(self.message_event)
         self.app.command("/roles")(self.roles_command)
         self.app.action("roles_user_select")(self.roles_user_select)
+        self.app.view_submission("roles_view")(self.roles_submit)
         database.create()
         database.check_for_corruption()
         self._connect_to_slack()
@@ -82,7 +83,8 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
         elif cmd == "calendars":
             say("Calendars: " + ", ".join(list(self.calendar.calendars)))
         elif cmd == "roles":
-            self.manage_roles(say, args)
+            # self.manage_roles(say, case_sensitive_args)
+            pass
         elif cmd == "next":
             if len(case_sensitive_args) < 2:
                 say("Need to provide a calendar.")
@@ -162,24 +164,55 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
 
     def roles_command(self, ack: Ack, command: dict, client: WebClient):
         ack()
-        client.views_open(
+        response = client.views_open(
             trigger_id=command["trigger_id"],
             view={
                 "type": "modal",
                 "callback_id": "roles_view",
                 "title": block_kit.create_plain_text("Roles"),
                 "submit": block_kit.create_plain_text("Save"),
+                "blocks": [block_kit.create_user_select("roles_user_select")],
+            },
+        )
+        self.view_id = response["view"]["id"]
+
+    def roles_user_select(self, ack: Ack, action: dict, client: WebClient):
+        ack()
+        user = action["selected_user"]
+        data = database.read()
+        roles = data.get_roles()
+        user_roles = data.get_roles_for_user(user)
+        options = {role: role for role in roles}
+        print(user)
+        print(roles)
+        print(user_roles)
+        print(options)
+        client.views_update(
+            view_id=self.view_id,
+            view={
+                "type": "modal",
+                "callback_id": "roles_view",
+                "title": block_kit.create_plain_text("Roles"),
+                "submit": block_kit.create_plain_text("Save"),
                 "blocks": [
-                    block_kit.create_user_select("roles_user_select"),
-                    block_kit.create_multi_static_select("roles_role_select"),
+                    block_kit.create_user_select("roles_user_select", user),
+                    block_kit.create_multi_static_select("Roles", options, user_roles, "roles_role_select"),
                 ],
             },
         )
-
-    def roles_user_select(self, ack: Ack, action):
-        ack()
-        user = action["selected_user"]
         print(json.dumps(action, indent=4))
+
+    def roles_submit(self, ack: Ack, view: dict):
+        ack()
+        state = view["state"]["values"]
+        user = state["roles_user_select"]["roles_user_select"]["selected_user"]
+        selected = state["roles_role_select"]["roles_role_select"]["selected_options"]
+        roles = {role["value"] for role in selected}
+        data = database.read()
+        data.set_roles(user, roles)
+        database.write(data)
+        print(user)
+        print(roles)
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         """Rings the doorbell and activates text to speech if the schedule allows it."""
@@ -231,45 +264,6 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
             data.schedule = new_schedule
             database.write(data)
             say(f"Wrote schedule.\n{database.read().schedule_to_str()}")
-
-    def manage_roles(self, say: Say, args: list[str]):
-        help_message = "Command must be either add [role] [users], remove [role] [users], or list [user]."
-        if len(args) < 2:
-            say(help_message)
-            return
-        action = args[1]
-        data = database.read()
-        if action == "add":
-            if len(args) < 4:
-                say("Must provide a role and space separated list of names.")
-                return
-            data.add_role(args[2], *args[3:])
-        elif action == "remove":
-            if len(args) < 4:
-                say("Must provide a role and space separated list of names.")
-                return
-            roles = data.get_roles()
-            role = args[2]
-            if role not in roles:
-                say(f"{role} is not a role!")
-                return
-            data.remove_role(role, *args[3:])
-        elif action == "list":
-            if len(args) < 3:
-                roles = data.get_roles()
-                if roles:
-                    say("Roles: " + ", ".join(roles))
-                else:
-                    say("No roles.")
-            else:
-                roles = data.get_roles_for_user(args[2])
-                if roles:
-                    say("Roles: " + ", ".join(roles))
-                else:
-                    say(f"{args[2]} has no roles.")
-        else:
-            say(help_message)
-        database.write(data)
 
     def calendar_subscribe(self, say: Say, channel: str, args: list[str]) -> None:
         """Subscribes to a google calendar to be reminded of any future events."""
