@@ -118,6 +118,9 @@ class Data:
                 continue
         return user_roles
 
+    def get_users_for_role(self, role: str) -> set[str]:
+        return self.roles[role]
+
     def _day_to_str(self, day: Optional[DaySchedule]) -> str:
         time_format = "%I:%M %p"
         if day is None:

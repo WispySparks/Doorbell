@@ -1,6 +1,7 @@
 """Contains the main code for the Doorbell Slack bot."""
 
 import datetime as dt
+import json
 import re
 import subprocess
 import sys
@@ -10,12 +11,14 @@ from time import sleep
 from typing import Final, Optional
 
 from pygame import mixer
-from slack_bolt import App
+from slack_bolt import Ack, App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_bolt.context.say import Say
+from slack_sdk import WebClient
 from websockets.exceptions import ConnectionClosed
 from websockets.sync import server
 
+import block_kit
 import database
 from event_poller import EventPoller
 from google_calendar import GoogleCalendar
@@ -45,6 +48,8 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
             )
         self.app.event("app_mention")(self.mention_event)
         self.app.event("message")(self.message_event)
+        self.app.command("/roles")(self.roles_command)
+        self.app.action("roles_user_select")(self.roles_user_select)
         database.create()
         database.check_for_corruption()
         self._connect_to_slack()
@@ -143,13 +148,38 @@ class Doorbell:  # TODO: Scuffed usergroups, need to store user in roles as user
     def message_event(self, body: dict) -> None:
         event = body["event"]
         text: str = event["text"]
-        # data = database.read()
+        lower_text = text.lower()
+        data = database.read()
+        roles = data.get_roles()
+        users = set()
+        for role in roles:
+            if "@" + role in lower_text:
+                users.update(data.get_users_for_role(role))
+        print(users)
+        for user in users:
+            pass
+            # self.post_message(user, text)
 
-        # data.get_roles()
-        # users = data.roles[""]
+    def roles_command(self, ack: Ack, command: dict, client: WebClient):
+        ack()
+        client.views_open(
+            trigger_id=command["trigger_id"],
+            view={
+                "type": "modal",
+                "callback_id": "roles_view",
+                "title": block_kit.create_plain_text("Roles"),
+                "submit": block_kit.create_plain_text("Save"),
+                "blocks": [
+                    block_kit.create_user_select("roles_user_select"),
+                    block_kit.create_multi_static_select("roles_role_select"),
+                ],
+            },
+        )
 
-        # for user in users:
-        #     self.post_message(user, text)
+    def roles_user_select(self, ack: Ack, action):
+        ack()
+        user = action["selected_user"]
+        print(json.dumps(action, indent=4))
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         """Rings the doorbell and activates text to speech if the schedule allows it."""
