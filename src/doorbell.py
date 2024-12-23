@@ -2,7 +2,9 @@
 
 import datetime as dt
 import json
+import random
 import re
+import string
 import subprocess
 import sys
 from pathlib import Path
@@ -48,9 +50,13 @@ class Doorbell:  # TODO: Scuffed usergroups, modals
             )
         self.app.event("app_mention")(self.mention_event)
         self.app.event("message")(self.message_event)
+
         self.app.command("/roles")(self.roles_command)
+        self.app.action("roles_manage")(self.roles_manage)
         self.app.action("roles_user_select")(self.roles_user_select)
         self.app.view_submission("roles_view")(self.roles_submit)
+        self.app.view_submission("roles_view_manage")(self.roles_manage_submit)
+
         database.create()
         database.check_for_corruption()
         self._connect_to_slack()
@@ -164,57 +170,91 @@ class Doorbell:  # TODO: Scuffed usergroups, modals
 
     def roles_command(self, ack: Ack, command: dict, client: WebClient):
         ack()
-        response = client.views_open(
+        block_id_prefix = self.create_block_prefix()
+        action_id = "roles_user_select"
+        client.views_open(
             trigger_id=command["trigger_id"],
-            view={
-                "type": "modal",
-                "callback_id": "roles_view",
-                "title": block_kit.create_plain_text("Roles"),
-                "blocks": [block_kit.create_user_select("roles_user_select")],
-            },
+            view=block_kit.create_view(
+                callback_id="roles_view",
+                title="Roles",
+                blocks=[
+                    block_kit.create_button(text="Manage Roles", action_id="roles_manage"),
+                    block_kit.create_user_select(action_id=action_id, block_id=block_id_prefix + action_id),
+                ],
+                private_metadata=block_id_prefix,
+            ),
         )
-        self.view_id = response["view"]["id"]
 
-    def roles_user_select(self, ack: Ack, action: dict, client: WebClient):
+    def roles_manage(self, ack: Ack, body: dict, client: WebClient):
+        ack()
+        options = {role: role for role in database.read().get_roles()}
+        blocks = [
+            block_kit.create_plain_text_input(label="Roles to add", optional=True, placeholder="Business CAD Leads ...")
+        ]
+        if options:
+            blocks.append(block_kit.create_multi_static_select("Roles to remove", options, []))
+        client.views_push(
+            trigger_id=body["trigger_id"],
+            view=block_kit.create_view(
+                callback_id="roles_view_manage",
+                title="Roles",
+                submit="Save",
+                blocks=blocks,
+            ),
+        )
+
+    def roles_user_select(self, ack: Ack, action: dict, view: dict, client: WebClient):
         ack()
         user = action["selected_user"]
         data = database.read()
         roles = data.get_roles()
-        user_roles = data.get_roles_for_user(user)
+        user_roles = list(data.get_roles_for_user(user))
         options = {role: role for role in roles}
-        print(user)
-        print(roles)
-        print(user_roles)
-        print(options)
-        client.views_update(
-            view_id=self.view_id,
-            view={
-                "type": "modal",
-                "callback_id": "roles_view",
-                "title": block_kit.create_plain_text("Roles"),
-                "submit": block_kit.create_plain_text("Save"),
-                "blocks": [
-                    block_kit.create_user_select("roles_user_select", user),
-                    block_kit.create_multi_static_select(
-                        "Roles", options, user_roles, "roles_role_select", f"{user}_select"
-                    ),
-                ],
-            },
-        )
-        print(json.dumps(action, indent=4))
+        view["submit"] = block_kit.create_plain_text("Save")
+        blocks: list = view["blocks"]
+        view.pop("bot_id", None)  # The API is not chill with this being there
+        if options:
+            blocks.append(
+                block_kit.create_multi_static_select(
+                    "Roles", options, user_roles, "roles_role_select", f"{user}_select"
+                )
+            )
+        client.views_update(view_id=view["id"], view=view)
 
     def roles_submit(self, ack: Ack, view: dict):
-        ack()
-        # https://api.slack.com/surfaces/modals#updating_response
+        block_id_prefix = self.create_block_prefix()
+        action_id = "roles_user_select"
+        ack(
+            response_action="update",
+            view=block_kit.create_view(
+                callback_id="roles_view",
+                title="Roles",
+                blocks=[block_kit.create_user_select(action_id=action_id, block_id=block_id_prefix + action_id)],
+                private_metadata=block_id_prefix,
+            ),
+        )
         state = view["state"]["values"]
-        user = state["roles_user_select"]["roles_user_select"]["selected_user"]
+        user = state[view["private_metadata"] + action_id][action_id]["selected_user"]
         selected = state[f"{user}_select"]["roles_role_select"]["selected_options"]
         roles = {role["value"] for role in selected}
         data = database.read()
         data.set_roles(user, roles)
         database.write(data)
-        print(user)
-        print(roles)
+
+    def roles_manage_submit(self, ack: Ack, view: dict):
+        ack()
+        roles_to_add = view["state"][""][""]["value"].split()
+        roles_to_remove = view["state"][""][""]["value"].split()
+        data = database.read()
+        for role in roles_to_add:
+            data.add_role(role)
+        for role in roles_to_remove:
+            data.remove_role(role)
+        print(json.dumps(view, indent=4))
+        database.write(data)
+
+    def create_block_prefix(self) -> str:
+        return "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         """Rings the doorbell and activates text to speech if the schedule allows it."""

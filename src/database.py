@@ -45,7 +45,8 @@ class Data:
 
     schedule: list[Optional[DaySchedule]] = field(default_factory=list)  # 7 days long, starts at Monday
     subscriptions: list[Subscription] = field(default_factory=list)
-    roles: dict[str, set[str]] = field(default_factory=dict)  # User: Roles
+    roles: set[str] = field(default_factory=set)
+    user_roles: dict[str, set[str]] = field(default_factory=dict)  # User: Roles
 
     def schedule_to_str(self) -> str:
         """Formats the internal schedule as a pretty string."""
@@ -94,28 +95,36 @@ class Data:
                 subs.append(sub)
         return subs
 
+    def add_role(self, role: str) -> None:
+        self.roles.add(role)
+
+    def remove_role(self, role: str) -> None:
+        if role in self.roles:
+            self.roles.remove(role)
+            for user in self.get_users_for_role(role):
+                roles = self.get_roles_for_user(user)
+                roles.remove(role)
+                self.set_roles(user, roles)
+
     def set_roles(self, user: str, roles: set[str]):
-        if user not in self.roles:
-            self.roles[user] = set()
-        self.roles[user] = roles
+        if user not in self.user_roles:
+            self.user_roles[user] = set()
+        self.user_roles[user] = roles
 
-    def get_roles_for_user(self, user: str) -> list[str]:
-        if user not in self.roles:
-            return []
-        return list(self.roles[user])
-
-    def get_roles(self) -> set[str]:
-        roles = set()
-        for user_roles in self.roles.values():
-            roles |= user_roles
-        return roles
+    def get_roles_for_user(self, user: str) -> set[str]:
+        if user not in self.user_roles:
+            return set()
+        return self.user_roles[user]
 
     def get_users_for_role(self, role: str) -> set[str]:
         users = set()
-        for user, roles in self.roles.items():
+        for user, roles in self.user_roles.items():
             if role in roles:
                 users.add(user)
         return users
+
+    def get_roles(self) -> set[str]:
+        return self.roles
 
     def _day_to_str(self, day: Optional[DaySchedule]) -> str:
         time_format = "%I:%M %p"
