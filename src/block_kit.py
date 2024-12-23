@@ -28,6 +28,7 @@ def create_user_select(*, action_id: str, block_id: str, initial_user: Optional[
 
 
 def create_multi_static_select(
+    *,
     label: str,
     options: dict[str, str],
     initial_options: list[str],
@@ -53,7 +54,7 @@ def create_multi_static_select(
     if initial_options:
         result["element"] |= {"initial_options": view_initial_options}
     if action_id:
-        result |= {"action_id": action_id}
+        result["element"] |= {"action_id": action_id}
     if block_id:
         result |= {"block_id": block_id}
     return result
@@ -79,7 +80,7 @@ def create_plain_text_input(
     optional: bool = False,
     placeholder: Optional[str] = None,
     action_id: Optional[str] = None,
-    block_id: Optional[str] = None
+    block_id: Optional[str] = None,
 ):
     result = {
         "type": "input",
