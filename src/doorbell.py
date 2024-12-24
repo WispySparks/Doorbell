@@ -151,8 +151,7 @@ class Doorbell:
                 " unsubscribe, subscriptions, all_subscriptions, play, restart, update, backup, version, and exit."
             )
 
-    def message_event(self, body: dict) -> None:
-        # TODO test this
+    def message_event(self, body: dict, client: WebClient) -> None:
         event = body["event"]
         text: str = event.get("text", "")
         data = database.read()
@@ -161,11 +160,10 @@ class Doorbell:
         for role in roles:
             if "@" + role in text:
                 users.update(data.get_users_for_role(role))
-        print(text)
-        print(users)
+        link = client.chat_getPermalink(channel=event["channel"], message_ts=event["ts"]).get("permalink", "")
+        text = text + "\nLink: " + link
         for user in users:
-            pass
-            # self.post_message(user, text)
+            self.post_message(user, text)
 
     def roles_command(self, ack: Ack, command: dict, client: WebClient):
         ack()
