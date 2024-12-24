@@ -51,6 +51,7 @@ class Doorbell:
         self.app.command("/roles")(self.roles_command)
         self.app.action("roles_manage")(self.roles_manage)
         self.app.action("roles_role_select")(lambda ack: ack())  # Dummy because it's not an input
+        self.app.action("remove")(lambda ack: ack())  # Dummy because it's not an input
         self.app.action("roles_user_select")(self.roles_user_select)
         self.app.view_submission("roles_view")(self.roles_submit)
         self.app.view_submission("roles_view_manage")(self.roles_manage_submit)
@@ -183,6 +184,7 @@ class Doorbell:
         ack()
         text_id = "add"
         select_id = "remove"
+        user = body["view"]["state"]["values"]["roles_user_select"]["roles_user_select"]["selected_user"]
         options = {role: role for role in database.read().get_roles()}
         blocks = [
             block_kit.create_plain_text_input(
@@ -206,24 +208,22 @@ class Doorbell:
         client.views_push(
             trigger_id=body["trigger_id"],
             view=block_kit.create_view(
-                callback_id="roles_view_manage",
-                title="Roles",
-                submit="Save",
-                blocks=blocks,
+                callback_id="roles_view_manage", title="Roles", submit="Save", blocks=blocks, private_metadata=user
             ),
         )
 
     def roles_user_select(self, ack: Ack, action: dict, body: dict, client: WebClient):
         ack()
-        view = body["view"]
-        user = action["selected_user"]
+        self.roles_update_view(action["selected_user"], body["view"]["id"], client)
+
+    def roles_update_view(self, user: str, view_id: str, client: WebClient):
         data = database.read()
         roles = data.get_roles()
         user_roles = list(data.get_roles_for_user(user))
         options = {role: role for role in roles}
         blocks = [
             block_kit.create_button(text="Manage Roles", action_id="roles_manage"),
-            block_kit.create_user_select(action_id=action["action_id"], block_id=action["block_id"]),
+            block_kit.create_user_select(action_id="roles_user_select", block_id="roles_user_select"),
         ]
         if options:
             blocks.append(
@@ -236,8 +236,8 @@ class Doorbell:
                 )
             )
         client.views_update(
-            view_id=view["id"],
-            view=block_kit.create_view(callback_id=view["callback_id"], title="Roles", submit="Save", blocks=blocks),
+            view_id=view_id,
+            view=block_kit.create_view(callback_id="roles_view", title="Roles", submit="Save", blocks=blocks),
         )
 
     def roles_submit(self, ack: Ack, view: dict):
@@ -255,8 +255,7 @@ class Doorbell:
         data.set_roles(user, roles)
         database.write(data)
 
-    def roles_manage_submit(self, ack: Ack, view: dict):
-        # TODO needs to reload the selecter on the view below
+    def roles_manage_submit(self, ack: Ack, view: dict, client: WebClient):
         ack()
         roles_to_add = view["state"]["values"]["add"]["add"]["value"]
         if roles_to_add is None:
@@ -271,6 +270,7 @@ class Doorbell:
         for role in roles_to_remove:
             data.remove_role(role["value"])
         database.write(data)
+        self.roles_update_view(view["private_metadata"], view["root_view_id"], client)
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         """Rings the doorbell and activates text to speech if the schedule allows it."""
