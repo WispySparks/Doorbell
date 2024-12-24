@@ -1,7 +1,9 @@
 """Contains the main code for the Doorbell Slack bot."""
 
 import datetime as dt
+import random
 import re
+import string
 import subprocess
 import sys
 from pathlib import Path
@@ -225,6 +227,7 @@ class Doorbell:
             block_kit.create_button(text="Manage Roles", action_id="roles_manage"),
             block_kit.create_user_select(action_id="roles_user_select", block_id="roles_user_select"),
         ]
+        select_block_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
         if options:
             blocks.append(
                 block_kit.create_multi_static_select(
@@ -232,12 +235,14 @@ class Doorbell:
                     options=options,
                     initial_options=user_roles,
                     action_id="roles_role_select",
-                    block_id=f"{user}_select",
+                    block_id=select_block_id,
                 )
             )
         client.views_update(
             view_id=view_id,
-            view=block_kit.create_view(callback_id="roles_view", title="Roles", submit="Save", blocks=blocks),
+            view=block_kit.create_view(
+                callback_id="roles_view", title="Roles", submit="Save", blocks=blocks, private_metadata=select_block_id
+            ),
         )
 
     def roles_submit(self, ack: Ack, view: dict):
@@ -249,7 +254,7 @@ class Doorbell:
         )
         values = view["state"]["values"]
         user = values["roles_user_select"]["roles_user_select"]["selected_user"]
-        selected = values.get(f"{user}_select", {}).get("roles_role_select", {}).get("selected_options", [])
+        selected = values.get(view["private_metadata"]).get("roles_role_select", {}).get("selected_options", [])
         roles = {role["value"] for role in selected}
         data = database.read()
         data.set_roles(user, roles)
