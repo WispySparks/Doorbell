@@ -260,6 +260,7 @@ class Doorbell:
         data = database.read()
         data.set_roles(user, roles)
         database.write(data)
+        print(f"Set roles for {user} to {roles}.")
 
     def roles_manage_submit(self, ack: Ack, view: dict, client: WebClient):
         ack()
@@ -276,6 +277,7 @@ class Doorbell:
         for role in roles_to_remove:
             data.remove_role(role["value"])
         database.write(data)
+        print(f"Added roles {roles_to_add} and removed roles {roles_to_remove}.")
         self.roles_update_view(view["private_metadata"], view["root_view_id"], client)
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
@@ -399,10 +401,12 @@ class Doorbell:
     def post_message(self, channel_id: str, message: str) -> None:
         """Posts a message to the specified Slack channel."""
         self.app.client.chat_postMessage(channel=channel_id, text=message, unfurl_links=False, unfurl_media=False)
+        print(f"Posted {message} to {channel_id}.")
 
     def upload_file(self, channel_id: str, file: bytes, name: str) -> None:
         """Uploads a file to the specified Slack channel."""
         self.app.client.files_upload_v2(channel=channel_id, file=file, filename=name)
+        print(f"Uploaded {name} to {channel_id}.")
 
     def restart(self, say: Say) -> None:
         """Sets a flag for consumers that Doorbell should be restarted. All restart logic is
