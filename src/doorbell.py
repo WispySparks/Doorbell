@@ -160,8 +160,11 @@ class Doorbell:
         for role in roles:
             if "@" + role in text:
                 users.update(data.get_users_for_role(role))
-        link = client.chat_getPermalink(channel=event["channel"], message_ts=event["ts"]).get("permalink", "")
-        text = text + "\nLink: " + link
+        sender = client.users_info(user=event["user"])["user"]["real_name"]
+        link = client.chat_getPermalink(channel=event.get("channel", ""), message_ts=event.get("ts", "")).get(
+            "permalink", ""
+        )
+        text = f"{sender}:\n{text}\n<{link}|Link to message>"
         for user in users:
             self.post_message(user, text)
 
