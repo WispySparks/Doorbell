@@ -1,10 +1,7 @@
 """Contains the main code for the Doorbell Slack bot."""
 
 import datetime as dt
-import json
-import random
 import re
-import string
 import subprocess
 import sys
 from pathlib import Path
@@ -30,7 +27,7 @@ from tts import TTS
 mixer.init()
 
 
-class Doorbell:  # TODO: Scuffed usergroups, modals
+class Doorbell:
     """The Doorbell Slack bot. All of the functionality starts in mention_event()."""
 
     app = App(token=BOT_TOKEN)
@@ -53,6 +50,7 @@ class Doorbell:  # TODO: Scuffed usergroups, modals
 
         self.app.command("/roles")(self.roles_command)
         self.app.action("roles_manage")(self.roles_manage)
+        self.app.action("roles_role_select")(lambda ack: ack())  # Dummy because it's not an input
         self.app.action("roles_user_select")(self.roles_user_select)
         self.app.view_submission("roles_view")(self.roles_submit)
         self.app.view_submission("roles_view_manage")(self.roles_manage_submit)
@@ -151,15 +149,16 @@ class Doorbell:  # TODO: Scuffed usergroups, modals
             )
 
     def message_event(self, body: dict) -> None:
+        # TODO test this
         event = body["event"]
-        text: str = event["text"]
-        lower_text = text.lower()
+        text: str = event.get("text", "")
         data = database.read()
         roles = data.get_roles()
         users = set()
         for role in roles:
-            if "@" + role in lower_text:
+            if "@" + role in text:
                 users.update(data.get_users_for_role(role))
+        print(text)
         print(users)
         for user in users:
             pass
@@ -216,12 +215,12 @@ class Doorbell:  # TODO: Scuffed usergroups, modals
 
     def roles_user_select(self, ack: Ack, action: dict, body: dict, client: WebClient):
         ack()
+        view = body["view"]
         user = action["selected_user"]
         data = database.read()
         roles = data.get_roles()
         user_roles = list(data.get_roles_for_user(user))
         options = {role: role for role in roles}
-        view = body["view"]
         blocks = [
             block_kit.create_button(text="Manage Roles", action_id="roles_manage"),
             block_kit.create_user_select(action_id=action["action_id"], block_id=action["block_id"]),
@@ -242,22 +241,15 @@ class Doorbell:  # TODO: Scuffed usergroups, modals
         )
 
     def roles_submit(self, ack: Ack, view: dict):
-        action_id = "roles_user_select"
-        # TODO maybe just keep the multi selector there / we could reuse the whole blocks
         ack(
             response_action="update",
             view=block_kit.create_view(
-                callback_id="roles_view",
-                title="Roles",
-                blocks=[
-                    block_kit.create_button(text="Manage Roles", action_id="roles_manage"),
-                    block_kit.create_user_select(action_id=action_id, block_id=action_id),
-                ],
+                callback_id=view["callback_id"], title="Roles", submit="Save", blocks=view["blocks"]
             ),
         )
-        state = view["state"]["values"]
-        user = state[action_id][action_id]["selected_user"]
-        selected = state.get(f"{user}_select", {}).get("roles_role_select", {}).get("selected_options", [])
+        values = view["state"]["values"]
+        user = values["roles_user_select"]["roles_user_select"]["selected_user"]
+        selected = values.get(f"{user}_select", {}).get("roles_role_select", {}).get("selected_options", [])
         roles = {role["value"] for role in selected}
         data = database.read()
         data.set_roles(user, roles)
