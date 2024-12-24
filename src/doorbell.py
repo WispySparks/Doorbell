@@ -229,7 +229,8 @@ class Doorbell:
             block_kit.create_user_select(action_id="roles_user_select", block_id="roles_user_select"),
         ]
         select_block_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
-        if options:
+        submit = None
+        if options and user != "":
             blocks.append(
                 block_kit.create_multi_static_select(
                     label="Roles",
@@ -239,30 +240,37 @@ class Doorbell:
                     block_id=select_block_id,
                 )
             )
+            submit = "Save"
         client.views_update(
             view_id=view_id,
             view=block_kit.create_view(
-                callback_id="roles_view", title="Roles", submit="Save", blocks=blocks, private_metadata=select_block_id
+                callback_id="roles_view", title="Roles", submit=submit, blocks=blocks, private_metadata=select_block_id
             ),
         )
 
-    def roles_submit(self, ack: Ack, view: dict):
+    def roles_submit(self, ack: Ack, view: dict, body: dict):
+        private_metadata = view["private_metadata"]
         ack(
             response_action="update",
             view=block_kit.create_view(
-                callback_id=view["callback_id"], title="Roles", submit="Save", blocks=view["blocks"]
+                callback_id=view["callback_id"],
+                title="Roles",
+                submit="Save",
+                blocks=view["blocks"],
+                private_metadata=private_metadata,
             ),
         )
         values = view["state"]["values"]
         user = values["roles_user_select"]["roles_user_select"]["selected_user"]
-        selected = values.get(view["private_metadata"]).get("roles_role_select", {}).get("selected_options", [])
+        selected = values.get(private_metadata, {}).get("roles_role_select", {}).get("selected_options", [])
         roles = {role["value"] for role in selected}
         data = database.read()
         data.set_roles(user, roles)
         database.write(data)
-        print(f"Set roles for {user} to {roles}.")
+        initiator = body.get("user", {}).get("id", "")
+        print(f"{initiator} set roles for {user} to {roles}.")
 
-    def roles_manage_submit(self, ack: Ack, view: dict, client: WebClient):
+    def roles_manage_submit(self, ack: Ack, view: dict, body: dict, client: WebClient):
         ack()
         roles_to_add = view["state"]["values"]["add"]["add"]["value"]
         if roles_to_add is None:
@@ -277,7 +285,8 @@ class Doorbell:
         for role in roles_to_remove:
             data.remove_role(role["value"])
         database.write(data)
-        print(f"Added roles {roles_to_add} and removed roles {roles_to_remove}.")
+        initiator = body.get("user", {}).get("id", "")
+        print(f"{initiator} added roles {roles_to_add} and removed roles {roles_to_remove}.")
         self.roles_update_view(view["private_metadata"], view["root_view_id"], client)
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
@@ -401,7 +410,7 @@ class Doorbell:
     def post_message(self, channel_id: str, message: str) -> None:
         """Posts a message to the specified Slack channel."""
         self.app.client.chat_postMessage(channel=channel_id, text=message, unfurl_links=False, unfurl_media=False)
-        print(f"Posted {message} to {channel_id}.")
+        print(f'Posted "{message}" to {channel_id}.')
 
     def upload_file(self, channel_id: str, file: bytes, name: str) -> None:
         """Uploads a file to the specified Slack channel."""
