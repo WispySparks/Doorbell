@@ -1,9 +1,7 @@
 """Contains the main code for the Doorbell Slack bot."""
 
 import datetime as dt
-import random
 import re
-import string
 import subprocess
 import sys
 from pathlib import Path
@@ -12,27 +10,17 @@ from time import sleep
 from typing import Final, Optional
 
 from pygame import mixer
-from slack_bolt import Ack, App
+from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_bolt.context.say import Say
 from slack_sdk import WebClient
-from slack_sdk.models.blocks import (
-    ActionsBlock,
-    ButtonElement,
-    InputBlock,
-    Option,
-    PlainTextInputElement,
-    SectionBlock,
-    StaticMultiSelectElement,
-    UserSelectElement,
-)
-from slack_sdk.models.views import View
 from websockets.exceptions import ConnectionClosed
 from websockets.sync import server
 
 import database
 from event_poller import EventPoller
 from google_calendar import GoogleCalendar
+from roles_command import RolesCommand
 from secret import APP_TOKEN, BOT_TOKEN, SOUND_PATH
 from tts import TTS
 
@@ -59,15 +47,7 @@ class Doorbell:
             )
         self.app.event("app_mention")(self.mention_event)
         self.app.event("message")(self.message_event)
-
-        self.app.command("/roles")(self.roles_command)
-        self.app.action("roles_manage")(self.roles_manage)
-        self.app.action("roles_role_select")(lambda ack: ack())  # Dummy because it's not an input
-        self.app.action("remove")(lambda ack: ack())  # Dummy because it's not an input
-        self.app.action("roles_user_select")(self.roles_user_select)
-        self.app.view_submission("roles_view")(self.roles_submit)
-        self.app.view_submission("roles_view_manage")(self.roles_manage_submit)
-
+        RolesCommand().register(self.app)
         database.create()
         database.check_for_corruption()
         self._connect_to_slack()
@@ -162,6 +142,7 @@ class Doorbell:
             )
 
     def message_event(self, body: dict, client: WebClient) -> None:
+        """Triggers on every message event, listens for roles being pinged to send out dms."""
         event = body["event"]
         text: str = event.get("text", "")
         data = database.read()
@@ -177,145 +158,6 @@ class Doorbell:
         text = f"{sender}:\n{text}\n<{link}|Link to message>"
         for user in users:
             self.post_message(user, text)
-
-    def roles_command(self, ack: Ack, command: dict, client: WebClient):
-        ack()
-        action_id = "roles_user_select"
-        client.views_open(
-            trigger_id=command["trigger_id"],
-            view=View(
-                type="modal",
-                callback_id="roles_view",
-                title="Roles",
-                blocks=[
-                    ActionsBlock(elements=[ButtonElement(text="Manage Roles", action_id="roles_manage")]),
-                    SectionBlock(
-                        block_id=action_id,
-                        text="User:",
-                        accessory=UserSelectElement(placeholder="Select a user", action_id=action_id),
-                    ),
-                ],
-            ),
-        )
-
-    def roles_manage(self, ack: Ack, body: dict, client: WebClient):
-        ack()
-        text_id = "add"
-        select_id = "remove"
-        user = body["view"]["state"]["values"]["roles_user_select"]["roles_user_select"]["selected_user"]
-        options = [Option(text=role, value=role) for role in database.read().get_roles()]
-        blocks = [
-            InputBlock(
-                label="Roles to add (space separated)",
-                optional=True,
-                element=PlainTextInputElement(placeholder="Business CAD Leads ...", action_id=text_id),
-                block_id=text_id,
-            )
-        ]
-        if options:
-            blocks += [
-                SectionBlock(
-                    text="Roles to remove",
-                    block_id=select_id,
-                    accessory=StaticMultiSelectElement(options=options, action_id=select_id),
-                )
-            ]
-        client.views_push(
-            trigger_id=body["trigger_id"],
-            view=View(
-                type="modal",
-                callback_id="roles_view_manage",
-                title="Roles",
-                submit="Save",
-                blocks=blocks,
-                private_metadata=user,
-            ),
-        )
-
-    def roles_user_select(self, ack: Ack, action: dict, body: dict, client: WebClient):
-        ack()
-        self.roles_update_view(action["selected_user"], body["view"]["id"], client)
-
-    def roles_update_view(self, user: str, view_id: str, client: WebClient):
-        action_id = "roles_user_select"
-        data = database.read()
-        roles = data.get_roles()
-        user_roles = [Option(text=role, value=role) for role in data.get_roles_for_user(user)]
-        options = [Option(text=role, value=role) for role in roles]
-        blocks = [
-            ActionsBlock(elements=[ButtonElement(text="Manage Roles", action_id="roles_manage")]),
-            SectionBlock(
-                block_id=action_id,
-                text="User:",
-                accessory=UserSelectElement(placeholder="Select a user", action_id=action_id),
-            ),
-        ]
-        select_block_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
-        submit = None
-        if options and user != "":
-            blocks += [
-                SectionBlock(
-                    text="Roles",
-                    block_id=select_block_id,
-                    accessory=StaticMultiSelectElement(
-                        options=options, initial_options=user_roles, action_id="roles_role_select"
-                    ),
-                )
-            ]
-            submit = "Save"
-        client.views_update(
-            view_id=view_id,
-            view=View(
-                type="modal",
-                callback_id="roles_view",
-                title="Roles",
-                submit=submit,
-                blocks=blocks,
-                private_metadata=select_block_id,
-            ),
-        )
-
-    def roles_submit(self, ack: Ack, view: dict, body: dict):
-        private_metadata = view["private_metadata"]
-        ack(
-            response_action="update",
-            view=View(
-                type="modal",
-                callback_id=view["callback_id"],
-                title="Roles",
-                submit="Save",
-                blocks=view["blocks"],
-                private_metadata=private_metadata,
-            ),
-        )
-        values = view["state"]["values"]
-        user = values["roles_user_select"]["roles_user_select"]["selected_user"]
-        selected = values.get(private_metadata, {}).get("roles_role_select", {}).get("selected_options", [])
-        roles = {role["value"] for role in selected}
-        data = database.read()
-        data.set_roles(user, roles)
-        database.write(data)
-        initiator = body.get("user", {}).get("id", "")
-        print(f"{initiator} set roles for {user} to {roles}.")
-
-    def roles_manage_submit(self, ack: Ack, view: dict, body: dict, client: WebClient):
-        ack()
-        roles_to_add = view["state"]["values"]["add"]["add"]["value"]
-        if roles_to_add is None:
-            roles_to_add = ""
-        roles_to_add = roles_to_add.split()
-        roles_to_remove = (
-            view.get("state", {}).get("values", {}).get("remove", {}).get("remove", {}).get("selected_options", [])
-        )
-        data = database.read()
-        for role in roles_to_add:
-            data.add_role(role)
-        for role in roles_to_remove:
-            data.remove_role(role["value"])
-        database.write(data)
-        initiator = body.get("user", {}).get("id", "")
-        print(f"{initiator} added roles {roles_to_add} and removed roles {roles_to_remove}.")
-        self.roles_update_view(view["private_metadata"], view["root_view_id"], client)
 
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         """Rings the doorbell and activates text to speech if the schedule allows it."""
