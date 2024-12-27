@@ -16,10 +16,20 @@ from slack_bolt import Ack, App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_bolt.context.say import Say
 from slack_sdk import WebClient
+from slack_sdk.models.blocks import (
+    ActionsBlock,
+    ButtonElement,
+    InputBlock,
+    Option,
+    PlainTextInputElement,
+    SectionBlock,
+    StaticMultiSelectElement,
+    UserSelectElement,
+)
+from slack_sdk.models.views import View
 from websockets.exceptions import ConnectionClosed
 from websockets.sync import server
 
-import block_kit
 import database
 from event_poller import EventPoller
 from google_calendar import GoogleCalendar
@@ -173,12 +183,17 @@ class Doorbell:
         action_id = "roles_user_select"
         client.views_open(
             trigger_id=command["trigger_id"],
-            view=block_kit.create_view(
+            view=View(
+                type="modal",
                 callback_id="roles_view",
                 title="Roles",
                 blocks=[
-                    block_kit.create_button(text="Manage Roles", action_id="roles_manage"),
-                    block_kit.create_user_select(action_id=action_id, block_id=action_id),
+                    ActionsBlock(elements=[ButtonElement(text="Manage Roles", action_id="roles_manage")]),
+                    SectionBlock(
+                        block_id=action_id,
+                        text="User:",
+                        accessory=UserSelectElement(placeholder="Select a user", action_id=action_id),
+                    ),
                 ],
             ),
         )
@@ -188,30 +203,32 @@ class Doorbell:
         text_id = "add"
         select_id = "remove"
         user = body["view"]["state"]["values"]["roles_user_select"]["roles_user_select"]["selected_user"]
-        options = {role: role for role in database.read().get_roles()}
+        options = [Option(text=role, value=role) for role in database.read().get_roles()]
         blocks = [
-            block_kit.create_plain_text_input(
+            InputBlock(
                 label="Roles to add (space separated)",
                 optional=True,
-                placeholder="Business CAD Leads ...",
-                action_id=text_id,
+                element=PlainTextInputElement(placeholder="Business CAD Leads ...", action_id=text_id),
                 block_id=text_id,
             )
         ]
         if options:
-            blocks.append(
-                block_kit.create_multi_static_select(
-                    label="Roles to remove",
-                    options=options,
-                    initial_options=[],
-                    action_id=select_id,
+            blocks += [
+                SectionBlock(
+                    text="Roles to remove",
                     block_id=select_id,
+                    accessory=StaticMultiSelectElement(options=options, action_id=select_id),
                 )
-            )
+            ]
         client.views_push(
             trigger_id=body["trigger_id"],
-            view=block_kit.create_view(
-                callback_id="roles_view_manage", title="Roles", submit="Save", blocks=blocks, private_metadata=user
+            view=View(
+                type="modal",
+                callback_id="roles_view_manage",
+                title="Roles",
+                submit="Save",
+                blocks=blocks,
+                private_metadata=user,
             ),
         )
 
@@ -220,31 +237,41 @@ class Doorbell:
         self.roles_update_view(action["selected_user"], body["view"]["id"], client)
 
     def roles_update_view(self, user: str, view_id: str, client: WebClient):
+        action_id = "roles_user_select"
         data = database.read()
         roles = data.get_roles()
-        user_roles = list(data.get_roles_for_user(user))
-        options = {role: role for role in roles}
+        user_roles = [Option(text=role, value=role) for role in data.get_roles_for_user(user)]
+        options = [Option(text=role, value=role) for role in roles]
         blocks = [
-            block_kit.create_button(text="Manage Roles", action_id="roles_manage"),
-            block_kit.create_user_select(action_id="roles_user_select", block_id="roles_user_select"),
+            ActionsBlock(elements=[ButtonElement(text="Manage Roles", action_id="roles_manage")]),
+            SectionBlock(
+                block_id=action_id,
+                text="User:",
+                accessory=UserSelectElement(placeholder="Select a user", action_id=action_id),
+            ),
         ]
         select_block_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
         submit = None
         if options and user != "":
-            blocks.append(
-                block_kit.create_multi_static_select(
-                    label="Roles",
-                    options=options,
-                    initial_options=user_roles,
-                    action_id="roles_role_select",
+            blocks += [
+                SectionBlock(
+                    text="Roles",
                     block_id=select_block_id,
+                    accessory=StaticMultiSelectElement(
+                        options=options, initial_options=user_roles, action_id="roles_role_select"
+                    ),
                 )
-            )
+            ]
             submit = "Save"
         client.views_update(
             view_id=view_id,
-            view=block_kit.create_view(
-                callback_id="roles_view", title="Roles", submit=submit, blocks=blocks, private_metadata=select_block_id
+            view=View(
+                type="modal",
+                callback_id="roles_view",
+                title="Roles",
+                submit=submit,
+                blocks=blocks,
+                private_metadata=select_block_id,
             ),
         )
 
@@ -252,7 +279,8 @@ class Doorbell:
         private_metadata = view["private_metadata"]
         ack(
             response_action="update",
-            view=block_kit.create_view(
+            view=View(
+                type="modal",
                 callback_id=view["callback_id"],
                 title="Roles",
                 submit="Save",
