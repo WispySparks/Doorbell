@@ -21,7 +21,7 @@ from slack_sdk.models.views import View
 import database
 
 
-class RolesCommand:
+class RolesCommand:  # It'd be nice if it saved when you switched users instead of always having to hit Save.
     """Contains all the functionality pertaining to the /roles command.
     To give your Slack app this command call register(app)."""
 
@@ -177,11 +177,12 @@ class RolesCommand:
             .get(self.manage_remove_action_id, {})
             .get("selected_options", [])
         )
+        roles_to_remove = [option["value"] for option in roles_to_remove]
         data = database.read()
         for role in roles_to_add:
             data.add_role(role)
         for role in roles_to_remove:
-            data.remove_role(role["value"])
+            data.remove_role(role)
         database.write(data)
         initiator = body.get("user", {}).get("id", "")
         print(f"{initiator} added roles {roles_to_add} and removed roles {roles_to_remove}.")
