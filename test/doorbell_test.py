@@ -29,7 +29,7 @@ class MockDoorbell(Doorbell):
 
 def fake_response(text: str, channel_id: str) -> dict:
     """Creates a fake payload for testing Doorbell."""
-    return {"event": {"channel": channel_id, "text": f"@Doorbell {text}", "user": "U05UFPWSEJH"}}  # user is Doorbell
+    return {"event": {"channel": channel_id, "text": f"{text}", "user": "U05UFPWSEJH"}}  # user is Doorbell
 
 
 def print_ignore_kwargs(*args, **_) -> None:
@@ -54,7 +54,10 @@ def main() -> None:
                         channel = c["id"]
                         print(f"Switched to channel {channel_name}")
                 continue
-            doorbell.mention_event(fake_response(cmd, channel), print_ignore_kwargs)  # type: ignore
+            if cmd.startswith("$"):
+                doorbell.message_event(fake_response(cmd, channel), doorbell.app.client)
+            else:
+                doorbell.mention_event(fake_response("@Doorbell " + cmd, channel), print_ignore_kwargs)  # type: ignore
     except KeyboardInterrupt:
         print("KeyboardInterrupt detected.")
         doorbell.close()

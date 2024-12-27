@@ -39,12 +39,14 @@ class Subscription:
     last_event: datetime
 
 
-@dataclass(frozen=True)
+@dataclass
 class Data:
     """The Data object being stored in the database."""
 
     schedule: list[Optional[DaySchedule]] = field(default_factory=list)  # 7 days long, starts at Monday
     subscriptions: list[Subscription] = field(default_factory=list)
+    roles: set[str] = field(default_factory=set)
+    user_roles: dict[str, set[str]] = field(default_factory=dict)  # User: Roles
 
     def schedule_to_str(self) -> str:
         """Formats the internal schedule as a pretty string."""
@@ -93,6 +95,43 @@ class Data:
                 subs.append(sub)
         return subs
 
+    def add_role(self, role: str) -> None:
+        """Adds a role to the database."""
+        self.roles.add(role)
+
+    def remove_role(self, role: str) -> None:
+        """Removes a role from the database and removes it from all users that previously held that role."""
+        if role in self.roles:
+            self.roles.remove(role)
+            for user in self.get_users_for_role(role):
+                roles = self.get_roles_for_user(user)
+                roles.remove(role)
+                self.set_roles(user, roles)
+
+    def set_roles(self, user: str, roles: set[str]):
+        """Sets the roles of a user. These should be roles found through get_roles()."""
+        if user not in self.user_roles:
+            self.user_roles[user] = set()
+        self.user_roles[user] = roles
+
+    def get_roles_for_user(self, user: str) -> set[str]:
+        """Returns the roles that a user has."""
+        if user not in self.user_roles:
+            return set()
+        return self.user_roles[user]
+
+    def get_users_for_role(self, role: str) -> set[str]:
+        """Returns the users that have a specific role."""
+        users = set()
+        for user, roles in self.user_roles.items():
+            if role in roles:
+                users.add(user)
+        return users
+
+    def get_roles(self) -> set[str]:
+        """Returns all of the roles."""
+        return self.roles
+
     def _day_to_str(self, day: Optional[DaySchedule]) -> str:
         time_format = "%I:%M %p"
         if day is None:
@@ -140,7 +179,9 @@ def check_for_corruption() -> None:
     """Attempts to read the pickle file and if there's an error
     the old database will be deleted and a new one created."""
     try:
-        read()
+        data = read()
+        if vars(data).keys() != vars(Data()).keys():
+            raise AttributeError()
     except AttributeError:  # Corrupted / Structure changed
         print("Couldn't read database, recreating...")
         delete()

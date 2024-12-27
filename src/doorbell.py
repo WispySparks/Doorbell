@@ -13,12 +13,14 @@ from pygame import mixer
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_bolt.context.say import Say
+from slack_sdk import WebClient
 from websockets.exceptions import ConnectionClosed
 from websockets.sync import server
 
 import database
 from event_poller import EventPoller
 from google_calendar import GoogleCalendar
+from roles_command import RolesCommand
 from secret import APP_TOKEN, BOT_TOKEN, SOUND_PATH
 from tts import TTS
 
@@ -44,6 +46,8 @@ class Doorbell:
                 log_dir + dt.datetime.now().strftime("%Y-%m-%d--%H-%M-%S") + ".log", "w", encoding="utf-8", buffering=1
             )
         self.app.event("app_mention")(self.mention_event)
+        self.app.event("message")(self.message_event)
+        RolesCommand().register(self.app)
         database.create()
         database.check_for_corruption()
         self._connect_to_slack()
@@ -137,6 +141,24 @@ class Doorbell:
                 " unsubscribe, subscriptions, all_subscriptions, play, restart, update, backup, version, and exit."
             )
 
+    def message_event(self, body: dict, client: WebClient) -> None:
+        """Triggers on every message event, listens for roles being pinged to send out dms."""
+        event = body["event"]
+        text: str = event.get("text", "")
+        data = database.read()
+        roles = data.get_roles()
+        users = set()
+        for role in roles:
+            if "@" + role.lower() in text.lower():
+                users.update(data.get_users_for_role(role))
+        sender = client.users_info(user=event["user"])["user"]["real_name"]
+        link = client.chat_getPermalink(channel=event.get("channel", ""), message_ts=event.get("ts", "")).get(
+            "permalink", ""
+        )
+        text = f"{sender}:\n{text}\n<{link}|Link to message>"
+        for user in users:
+            self.post_message(user, text)
+
     def ring_doorbell(self, say: Say, user: str, args: list[str]) -> None:
         """Rings the doorbell and activates text to speech if the schedule allows it."""
         schedule = database.read().schedule
@@ -158,8 +180,8 @@ class Doorbell:
 
     def manage_schedule(self, say: Say, args: list[str]) -> None:
         """Either reads the current schedule to the user or accepts a new schedule to write from the user."""
+        data = database.read()
         if len(args) < 2:
-            data = database.read()
             if not data.schedule:
                 say("Schedule not created yet!")
             else:
@@ -170,12 +192,12 @@ class Doorbell:
                 + " It starts with Monday all the way till Sunday, e.g. 14:10-16:30 - - - - 12:00-13:00 -"
             )
         else:
-            schedule: list[Optional[database.DaySchedule]] = []
+            new_schedule: list[Optional[database.DaySchedule]] = []
             active_times = args[1:]
             for day in range(7):
                 time = active_times[day]
                 if time == "-":
-                    schedule.append(None)
+                    new_schedule.append(None)
                 elif re.match("^([0-1][0-9]|[2][0-3]):[0-5][0-9]-([0-1][0-9]|[2][0-3]):[0-5][0-9]$", time) is None:
                     say("Invalid time format. Should be XX:XX-XX:XX in 24 hour time.")
                     return
@@ -183,8 +205,9 @@ class Doorbell:
                     start, end = time.split("-")
                     start_time = dt.time(int(start.split(":")[0]), int(start.split(":")[1]))
                     end_time = dt.time(int(end.split(":")[0]), int(end.split(":")[1]))
-                    schedule.append(database.DaySchedule(start_time, end_time))
-            database.write(database.Data(schedule))
+                    new_schedule.append(database.DaySchedule(start_time, end_time))
+            data.schedule = new_schedule
+            database.write(data)
             say(f"Wrote schedule.\n{database.read().schedule_to_str()}")
 
     def calendar_subscribe(self, say: Say, channel: str, args: list[str]) -> None:
@@ -211,7 +234,9 @@ class Doorbell:
                     say("Can't subscribe to the same calendar multiple times in the same channel.")
                     return
             data.subscriptions.append(
-                database.Subscription(channel, calendar_name, remind_time, next_event, dt.datetime.now().astimezone())
+                database.Subscription(
+                    channel, calendar_name, remind_time, next_event, dt.datetime.now().astimezone(dt.timezone.utc)
+                )
             )
             database.write(data)
             say(f"Subscribed to {calendar_name} and reminds {str(remind_time.total_seconds() / 3600)} hours before.")
@@ -255,10 +280,12 @@ class Doorbell:
     def post_message(self, channel_id: str, message: str) -> None:
         """Posts a message to the specified Slack channel."""
         self.app.client.chat_postMessage(channel=channel_id, text=message, unfurl_links=False, unfurl_media=False)
+        print(f'Posted "{message}" to {channel_id}.')
 
     def upload_file(self, channel_id: str, file: bytes, name: str) -> None:
         """Uploads a file to the specified Slack channel."""
         self.app.client.files_upload_v2(channel=channel_id, file=file, filename=name)
+        print(f"Uploaded {name} to {channel_id}.")
 
     def restart(self, say: Say) -> None:
         """Sets a flag for consumers that Doorbell should be restarted. All restart logic is

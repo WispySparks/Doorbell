@@ -1,16 +1,16 @@
 # Audio
 pygame==2.6.1
 # Slack
-slack-bolt==1.21.2
+slack-bolt==1.22.0
 # Spicetify
 websockets==14.1
 # Google Calendar
-google-api-python-client==2.154.0
+google-api-python-client==2.156.0
 google-auth-oauthlib==1.2.1
 # Tooling
 black==24.10.0
-pylint==3.3.1
-mypy==1.13.0
+pylint==3.3.2
+mypy==1.14.0
 # TTS
 winrt-Windows.Foundation==2.3.0
 winrt-Windows.Media.Core==2.3.0

@@ -1,5 +1,6 @@
 """Contains the GoogleCalendar class for accessing the team's calendar."""
 
+import datetime as dt
 import os.path
 from dataclasses import dataclass
 from datetime import datetime
@@ -60,7 +61,7 @@ class GoogleCalendar:
         if calendar_id is None:
             return events
         if min_date is None:
-            min_date = datetime.now().astimezone()
+            min_date = datetime.now().astimezone(dt.timezone.utc)
         result = (
             self.service.events()
             .list(calendarId=calendar_id, orderBy="startTime", singleEvents=True, timeMin=min_date.isoformat())
@@ -79,8 +80,8 @@ class GoogleCalendar:
                 if event.get("end").get("dateTime") is None
                 else event.get("end").get("dateTime")
             )
-            start = datetime.fromisoformat(start)
-            end = datetime.fromisoformat(end)
+            start = datetime.fromisoformat(start).astimezone(dt.timezone.utc)
+            end = datetime.fromisoformat(end).astimezone(dt.timezone.utc)
             events.append(CalendarEvent(name, start, end))
         return events
 
