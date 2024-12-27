@@ -20,8 +20,8 @@ from websockets.sync import server
 import database
 from event_poller import EventPoller
 from google_calendar import GoogleCalendar
-from roles_command import RolesCommand
 from secret import APP_TOKEN, BOT_TOKEN, SOUND_PATH
+from slash_commands.roles_command import RolesCommand
 from tts import TTS
 
 mixer.init()
