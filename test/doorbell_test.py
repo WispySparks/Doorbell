@@ -55,7 +55,7 @@ def main() -> None:
                         print(f"Switched to channel {channel_name}")
                 continue
             if cmd.startswith("$"):
-                doorbell.message_event(fake_response(cmd, channel))
+                doorbell.message_event(fake_response(cmd, channel), doorbell.app.client)
             else:
                 doorbell.mention_event(fake_response("@Doorbell " + cmd, channel), print_ignore_kwargs)  # type: ignore
     except KeyboardInterrupt:

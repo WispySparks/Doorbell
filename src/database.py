@@ -96,9 +96,11 @@ class Data:
         return subs
 
     def add_role(self, role: str) -> None:
+        """Adds a role to the database."""
         self.roles.add(role)
 
     def remove_role(self, role: str) -> None:
+        """Removes a role from the database and removes it from all users that previously held that role."""
         if role in self.roles:
             self.roles.remove(role)
             for user in self.get_users_for_role(role):
@@ -107,16 +109,19 @@ class Data:
                 self.set_roles(user, roles)
 
     def set_roles(self, user: str, roles: set[str]):
+        """Sets the roles of a user. These should be roles found through get_roles()."""
         if user not in self.user_roles:
             self.user_roles[user] = set()
         self.user_roles[user] = roles
 
     def get_roles_for_user(self, user: str) -> set[str]:
+        """Returns the roles that a user has."""
         if user not in self.user_roles:
             return set()
         return self.user_roles[user]
 
     def get_users_for_role(self, role: str) -> set[str]:
+        """Returns the users that have a specific role."""
         users = set()
         for user, roles in self.user_roles.items():
             if role in roles:
@@ -124,6 +129,7 @@ class Data:
         return users
 
     def get_roles(self) -> set[str]:
+        """Returns all of the roles."""
         return self.roles
 
     def _day_to_str(self, day: Optional[DaySchedule]) -> str:
