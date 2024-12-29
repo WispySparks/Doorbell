@@ -56,7 +56,6 @@ class RolesCommand:  # It'd be nice if it saved when you selected roles.
         app.command("/roles")(self._roles_command)
         app.action(self.MANAGE_BUTTON_ACTION_ID)(self._roles_manage)
         app.action(self.ROLE_SELECT_ACTION_ID)(lambda ack: ack())  # Dummy because it's not an input
-        app.action(self.MANAGE_REMOVE_ACTION_ID)(lambda ack: ack())  # Dummy because it's not an input
         app.action(self.USER_SELECT_ACTION_ID)(self._roles_user_select)
         app.view_submission(self.ROOT_CALLBACK_ID)(self._roles_submit)
         app.view_submission(self.MANAGE_CALLBACK_ID)(self._roles_manage_submit)
@@ -89,10 +88,11 @@ class RolesCommand:  # It'd be nice if it saved when you selected roles.
         ]
         if options:
             blocks += [
-                SectionBlock(
-                    text="Roles to remove",
+                InputBlock(
+                    label="Roles to remove",
+                    optional=True,
                     block_id=self.MANAGE_REMOVE_BLOCK_ID,
-                    accessory=StaticMultiSelectElement(options=options, action_id=self.MANAGE_REMOVE_ACTION_ID),
+                    element=StaticMultiSelectElement(options=options, action_id=self.MANAGE_REMOVE_ACTION_ID),
                 )
             ]
         client.views_push(
@@ -154,7 +154,7 @@ class RolesCommand:  # It'd be nice if it saved when you selected roles.
                 private_metadata=private_metadata,
             ),
         )
-        values = view["state"]["values"]
+        values: dict = view["state"]["values"]
         user = values[self.USER_SELECT_BLOCK_ID][self.USER_SELECT_ACTION_ID]["selected_user"]
         selected = values.get(private_metadata, {}).get(self.ROLE_SELECT_ACTION_ID, {}).get("selected_options", [])
         roles = {role["value"] for role in selected}
