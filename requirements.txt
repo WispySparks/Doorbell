@@ -9,8 +9,8 @@ google-api-python-client==2.156.0
 google-auth-oauthlib==1.2.1
 # Tooling
 black==24.10.0
-pylint==3.3.2
-mypy==1.14.0
+pylint==3.3.3
+mypy==1.14.1
 # TTS
 winrt-Windows.Foundation==2.3.0
 winrt-Windows.Media.Core==2.3.0
