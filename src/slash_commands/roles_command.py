@@ -21,7 +21,7 @@ from slack_sdk.models.views import View
 import database
 
 
-class RolesCommand:  # It'd be nice if it saved when you selected roles.
+class RolesCommand:
     """Contains all the functionality pertaining to the /roles command.
     To give your Slack app this command call register(app)."""
 
@@ -29,7 +29,6 @@ class RolesCommand:  # It'd be nice if it saved when you selected roles.
     ROOT_CALLBACK_ID: Final[str] = "roles_view"
     MANAGE_CALLBACK_ID: Final[str] = "roles_view_manage"
     VIEW_TITLE: Final[str] = "Roles"
-    VIEW_SUBMIT: Final[str] = "Save"
 
     MANAGE_ADD_BLOCK_ID: Final[str] = "roles_manage_add"
     MANAGE_ADD_ACTION_ID: Final[str] = MANAGE_ADD_BLOCK_ID
@@ -55,9 +54,8 @@ class RolesCommand:  # It'd be nice if it saved when you selected roles.
         """Registers your Slack app to have a /roles command."""
         app.command("/roles")(self._roles_command)
         app.action(self.MANAGE_BUTTON_ACTION_ID)(self._roles_manage)
-        app.action(self.ROLE_SELECT_ACTION_ID)(lambda ack: ack())  # Dummy because it's not an input
+        app.action(self.ROLE_SELECT_ACTION_ID)(self._roles_role_select)
         app.action(self.USER_SELECT_ACTION_ID)(self._roles_user_select)
-        app.view_submission(self.ROOT_CALLBACK_ID)(self._roles_submit)
         app.view_submission(self.MANAGE_CALLBACK_ID)(self._roles_manage_submit)
 
     def _roles_command(self, ack: Ack, command: dict, client: WebClient) -> None:
@@ -101,7 +99,7 @@ class RolesCommand:  # It'd be nice if it saved when you selected roles.
                 type=self.VIEW_TYPE,
                 callback_id=self.MANAGE_CALLBACK_ID,
                 title=self.VIEW_TITLE,
-                submit=self.VIEW_SUBMIT,
+                submit="Save",
                 blocks=blocks,
                 private_metadata=user,
             ),
@@ -117,7 +115,6 @@ class RolesCommand:  # It'd be nice if it saved when you selected roles.
         options = self._generate_options(data.get_roles())
         blocks = [self.MANAGE_ROLES_BUTTON, self.USER_SELECT]
         select_block_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
-        submit = None
         if options and user != "":
             blocks += [
                 SectionBlock(
@@ -128,35 +125,24 @@ class RolesCommand:  # It'd be nice if it saved when you selected roles.
                     ),
                 )
             ]
-            submit = self.VIEW_SUBMIT
         client.views_update(
             view_id=view_id,
             view=View(
                 type=self.VIEW_TYPE,
                 callback_id=self.ROOT_CALLBACK_ID,
                 title=self.VIEW_TITLE,
-                submit=submit,
                 blocks=blocks,
                 private_metadata=select_block_id,
             ),
         )
 
-    def _roles_submit(self, ack: Ack, view: dict, body: dict) -> None:
-        private_metadata = view["private_metadata"]
-        ack(
-            response_action="update",
-            view=View(
-                type=self.VIEW_TYPE,
-                callback_id=self.ROOT_CALLBACK_ID,
-                title=self.VIEW_TITLE,
-                submit=self.VIEW_SUBMIT,
-                blocks=view["blocks"],
-                private_metadata=private_metadata,
-            ),
-        )
+    def _roles_role_select(self, ack: Ack, body: dict) -> None:
+        ack()
+        view = body["view"]
+        role_select_block_id = view["private_metadata"]
         values: dict = view["state"]["values"]
         user = values[self.USER_SELECT_BLOCK_ID][self.USER_SELECT_ACTION_ID]["selected_user"]
-        selected = values.get(private_metadata, {}).get(self.ROLE_SELECT_ACTION_ID, {}).get("selected_options", [])
+        selected = values.get(role_select_block_id, {}).get(self.ROLE_SELECT_ACTION_ID, {}).get("selected_options", [])
         roles = {role["value"] for role in selected}
         data = database.read()
         data.set_roles(user, roles)
