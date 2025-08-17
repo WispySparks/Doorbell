@@ -64,7 +64,7 @@ class Doorbell:
         channel_id = event["channel"]
         text: str = event["text"]
         user = event["user"]
-        user_name = self.app.client.users_info(user=user)["user"]["real_name"]
+        user_name = self.app.client.users_info(user=user)["user"]["real_name"]  # type: ignore
         args = text.lower().split()[1:]  # Ignore first word which is the mention
         case_sensitive_args = text.split()[1:]  # Needed for URLs
         print(f"Channel: {channel_id}/{self.get_channel_name(channel_id)}, Args: {args}, User: {user_name}")
@@ -151,7 +151,7 @@ class Doorbell:
         for role in roles:
             if "@" + role.lower() in text.lower():
                 users.update(data.get_users_for_role(role))
-        sender = client.users_info(user=event["user"])["user"]["real_name"]
+        sender = client.users_info(user=event["user"])["user"]["real_name"]  # type: ignore
         link = client.chat_getPermalink(channel=event.get("channel", ""), message_ts=event.get("ts", "")).get(
             "permalink", ""
         )
@@ -274,7 +274,7 @@ class Doorbell:
         """Returns the name of Slack channel given its channel id."""
         result = self.app.client.conversations_info(channel=channel_id)
         if result["channel"] is not None:
-            return result["channel"].get("name", "None")
+            return result["channel"].get("name", "None")  # type: ignore
         return "None"
 
     def post_message(self, channel_id: str, message: str) -> None:
